@@ -317,7 +317,9 @@ func cmdPop(jq *JQShell, args []string) error {
 	if len(args) > 1 {
 		return fmt.Errorf("too many arguments given")
 	}
-	if len(args) == 1 {
+	if len(args) == 0 {
+		n = 1
+	} else {
 		var err error
 		n, err = strconv.Atoi(args[0])
 		if err != nil {
