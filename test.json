@@ -1,0 +1,55 @@
+{
+    "type": "test",
+    "items": [
+    {
+        "type": "greeting",
+        "name": "hello_world",
+        "message": "hello, world!"
+    },
+    {
+        "type": "greeting",
+        "name": "hello_world",
+        "message": "hello, world!"
+    },
+    {
+        "type": "greeting",
+        "name": "hello_world",
+        "message": "hello, world!"
+    },
+    {
+        "type": "greeting",
+        "name": "hello_world",
+        "message": "hello, world!"
+    },
+    {
+        "type": "greeting",
+        "name": "hello_world",
+        "message": "hello, world!"
+    },
+    {
+        "type": "greeting",
+        "name": "hello_world",
+        "message": "hello, world!"
+    },
+    {
+        "type": "greeting",
+        "name": "hello_world",
+        "message": "hello, world!"
+    },
+    {
+        "type": "greeting",
+        "name": "hello_world",
+        "message": "hello, world!"
+    },
+    {
+        "type": "greeting",
+        "name": "hello_world",
+        "message": "hello, world!"
+    },
+    {
+        "type": "greeting",
+        "name": "hello_world",
+        "message": "hello, world!"
+    }
+    ]
+}
