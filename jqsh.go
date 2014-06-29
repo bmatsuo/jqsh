@@ -251,6 +251,23 @@ func (jq *JQShell) loop() {
 				}
 				if err != nil {
 					jq.log(err)
+				} else {
+					// TODO clean this up. (cmdPushInteractive, cmdPeek)
+					err := jq.execute([]string{"write"}, nil)
+					if err != nil {
+						jq.log(err)
+						if cmd.cmd[0] == "push" {
+							npush := len(cmd.cmd) - 1
+							if npush == 0 {
+								npush = 1
+							}
+							jq.log("reverting push operation")
+							err := jq.execute([]string{"pop", fmt.Sprint(npush)}, nil)
+							if err != nil {
+								jq.log(err)
+							}
+						}
+					}
 				}
 				ready <- struct{}{}
 			}()
@@ -277,6 +294,15 @@ func (jq *JQShell) logf(format string, v ...interface{}) {
 	jq.Log.Printf(format, v...)
 }
 
+type ExecError struct {
+	cmd []string
+	err error
+}
+
+func (err ExecError) Error() string {
+	return fmt.Sprintf("%s: %v", err.cmd[0], err.err)
+}
+
 func (jq *JQShell) execute(cmd []string, err error) error {
 	if err, ok := err.(InvalidCommandError); ok {
 		jq.log(err)
@@ -289,13 +315,12 @@ func (jq *JQShell) execute(cmd []string, err error) error {
 		name, args := cmd[0], cmd[1:]
 		shellcmd, ok := jq.lib[name]
 		if !ok {
-			jq.logf("%s: command unknown", name)
-			return nil
+			return fmt.Errorf("%s: command unknown", name)
 		}
 		if shellcmd != nil {
 			execerr := shellcmd.ExecuteShellCommand(jq, args)
 			if execerr != nil {
-				jq.logf("%s: %v", name, execerr)
+				return ExecError{cmd, execerr}
 			}
 		}
 	}
@@ -366,12 +391,15 @@ func cmdWrite(jq *JQShell, args []string) error {
 			break
 		}
 		_, _, err = Execute(w, os.Stderr, r, "", jq.Stack)
-		if err != nil {
-			return err
-		}
 		w.Close()
-		err = <-errch
-		return err
+		pageErr := <-errch
+		if err != nil {
+			return ExecError{[]string{"jq"}, err}
+		}
+		if pageErr != nil {
+			jq.log("pager: ", pageErr)
+		}
+		return nil
 	}
 	return fmt.Errorf("file output not allowed")
 }

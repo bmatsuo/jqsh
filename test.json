@@ -3,8 +3,18 @@
     "items": [
     {
         "type": "greeting",
-        "name": "hello_world",
-        "message": "hello, world!"
+        "name": "hal",
+        "message": "i can't let you do that, dave"
+    },
+    {
+        "type": "greeting",
+        "name": "homer",
+        "message": "a-hoy-hoy"
+    },
+    {
+        "type": "greeting",
+        "name": "bud",
+        "message": "wazzup"
     },
     {
         "type": "greeting",
@@ -18,33 +28,23 @@
     },
     {
         "type": "greeting",
-        "name": "hello_world",
-        "message": "hello, world!"
+        "name": "flanders",
+        "message": "howdily doodily"
     },
     {
         "type": "greeting",
-        "name": "hello_world",
-        "message": "hello, world!"
+        "name": "doctor",
+        "message": "put the lime in the coconut"
     },
     {
         "type": "greeting",
-        "name": "hello_world",
-        "message": "hello, world!"
+        "name": "meh",
+        "message": "hello, i guess"
     },
     {
         "type": "greeting",
-        "name": "hello_world",
-        "message": "hello, world!"
-    },
-    {
-        "type": "greeting",
-        "name": "hello_world",
-        "message": "hello, world!"
-    },
-    {
-        "type": "greeting",
-        "name": "hello_world",
-        "message": "hello, world!"
+        "name": "beatles",
+        "message": "hello, hello!"
     },
     {
         "type": "greeting",
