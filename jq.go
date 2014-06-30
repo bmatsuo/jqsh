@@ -151,24 +151,24 @@ func Execute(outw, errw io.Writer, in io.Reader, stop <-chan struct{}, jq string
 	return nout, nerr, err
 }
 
-type JQFilter interface {
+type Filter interface {
 	JQFilter() []string
 }
 
-var JQFilterJoin = " | "
+var FilterJoinString = " | "
 
-func JoinFilter(filter JQFilter) string {
-	return strings.Join(filter.JQFilter(), JQFilterJoin)
+func JoinFilter(filter Filter) string {
+	return strings.Join(filter.JQFilter(), FilterJoinString)
 }
 
-type JQFilterString string
+type FilterString string
 
-func (s JQFilterString) JQFilter() []string {
+func (s FilterString) JQFilter() []string {
 	return []string{string(s)}
 }
 
 type JQStack struct {
-	pipe []JQFilter
+	pipe []Filter
 }
 
 // Args returns arguments for the jq command line utility.
@@ -183,11 +183,11 @@ func (s *JQStack) JQFilter() []string {
 	return args
 }
 
-func (s *JQStack) Push(cmd JQFilter) {
+func (s *JQStack) Push(cmd Filter) {
 	s.pipe = append(s.pipe, cmd)
 }
 
-func (s *JQStack) Pop() (JQFilter, error) {
+func (s *JQStack) Pop() (Filter, error) {
 	if len(s.pipe) == 0 {
 		return nil, ErrStackEmpty
 	}

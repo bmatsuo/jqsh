@@ -181,7 +181,7 @@ func cmdPush(jq *JQShell, flags *CmdFlags) error {
 		if arg == "" {
 			continue
 		}
-		jq.Stack.Push(JQFilterString(arg))
+		jq.Stack.Push(FilterString(arg))
 	}
 	return nil
 }
