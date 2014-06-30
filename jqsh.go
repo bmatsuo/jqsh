@@ -68,6 +68,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -79,6 +80,32 @@ var ErrStackEmpty = fmt.Errorf("the stack is empty")
 func main() {
 	flag.Parse()
 	args := flag.Args()
+
+	jqpath, err := LocateJQ("")
+	if err == ErrJQNotFound {
+		fmt.Fprintln(os.Stderr, "Unable to locate the jq executable. Make sure it's installed.")
+		fmt.Fprintln(os.Stderr)
+		switch runtime.GOOS {
+		case "darwin":
+			fmt.Fprintln(os.Stderr, "The easiest way to install jq on OS X is with homebrew.")
+			fmt.Fprintln(os.Stderr)
+			fmt.Fprintln(os.Stderr, "\tbrew install jq")
+		default:
+			fmt.Fprintln(os.Stderr, "See the jq homepage for download and install instructions")
+			fmt.Fprintln(os.Stderr)
+			fmt.Fprintln(os.Stderr, "\thttp://stedolan.github.io/jq/")
+		}
+		os.Exit(1)
+	}
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "locating jq:", err)
+		os.Exit(1)
+	}
+	_, err = CheckJQVersion(jqpath)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 
 	// setup initial commands to play before reading input.  single files are
 	// loaded with :load, multple files are loaded with :exec cat
@@ -114,7 +141,7 @@ func main() {
 	fmt.Println()
 	sh := NewInitShellReader(nil, initcmds)
 	jq := NewJQShell(sh)
-	err := jq.Wait()
+	err = jq.Wait()
 	if err != nil {
 		log.Fatal(err)
 	}
