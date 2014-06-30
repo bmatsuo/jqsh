@@ -18,8 +18,17 @@ If Go is installed on your system, you can instead compile the latest
 
 ##Getting started
 
-    $ jqsh
-    > :help
+Here's an example jqsh session to get a feel for how the shell works.  It's
+good to have some background working with
+[jq](http://stedolan.github.io/jq/manual/).  Although it's straight forward
+enough to not be necessary.
+
+    $ jqsh example.json
+    > .items[].name
+    > :pop
+    > .items[]
+    > select(.message | contains("hello"))
+    > :quit
 
 Reference documentation is on
 [godoc.org](http://godoc.org/github.com/bmatsuo/jqsh) for now.
