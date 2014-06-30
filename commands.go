@@ -103,7 +103,7 @@ func (lib *Lib) Execute(jq *JQShell, name string, args []string) error {
 	if !ok {
 		return fmt.Errorf("%v: unknown command", name)
 	}
-	err := cmd.ExecuteShellCommand(jq, args)
+	err := cmd.ExecuteShellCommand(jq, Flags(name, args))
 	if err != nil {
 		return ExecError{append([]string{name}, args...), err}
 	}
@@ -113,21 +113,24 @@ func (lib *Lib) Execute(jq *JQShell, name string, args []string) error {
 var ShellExit = fmt.Errorf("exit")
 
 type JQShellCommand interface {
-	ExecuteShellCommand(*JQShell, []string) error
+	ExecuteShellCommand(*JQShell, *CmdFlags) error
 }
 
-type JQShellCommandFunc func(*JQShell, []string) error
+type JQShellCommandFunc func(*JQShell, *CmdFlags) error
 
-func (fn JQShellCommandFunc) ExecuteShellCommand(jq *JQShell, args []string) error {
-	return fn(jq, args)
+func (fn JQShellCommandFunc) ExecuteShellCommand(jq *JQShell, flags *CmdFlags) error {
+	return fn(jq, flags)
 }
 
-func cmdQuit(jq *JQShell, args []string) error {
+func cmdQuit(jq *JQShell, flags *CmdFlags) error {
+	err := flags.Parse(nil)
+	if err != nil {
+		return err
+	}
 	return ShellExit
 }
 
-func cmdScript(jq *JQShell, args []string) error {
-	flags := Flags("script", args)
+func cmdScript(jq *JQShell, flags *CmdFlags) error {
 	flags.Bool("oneline", false, "do not print a hash-bang (#!) line")
 	flags.String("f", "", "specify the file argument to jq")
 	flags.Bool("F", false, "use the current file as the argument to jq")
@@ -154,8 +157,7 @@ func shellEscape(s, q, qesc string) string {
 	return q + strings.Replace(s, q, qesc, -1) + q
 }
 
-func cmdFilter(jq *JQShell, args []string) error {
-	flags := Flags("filter", args)
+func cmdFilter(jq *JQShell, flags *CmdFlags) error {
 	jqsyntax := flags.Bool("jq", false, "print the filter with jq syntax")
 	qchars := flags.String("quote", "", "quote and escaped quote runes the -jq filter string (e.g. \"'\\'\")")
 	err := flags.Parse(nil)
@@ -191,7 +193,12 @@ func cmdFilter(jq *JQShell, args []string) error {
 	return nil
 }
 
-func cmdPush(jq *JQShell, args []string) error {
+func cmdPush(jq *JQShell, flags *CmdFlags) error {
+	err := flags.Parse(nil)
+	if err != nil {
+		return err
+	}
+	args := flags.Args()
 	for _, arg := range args {
 		if arg == "" {
 			continue
@@ -201,7 +208,12 @@ func cmdPush(jq *JQShell, args []string) error {
 	return nil
 }
 
-func cmdPop(jq *JQShell, args []string) error {
+func cmdPop(jq *JQShell, flags *CmdFlags) error {
+	err := flags.Parse(nil)
+	if err != nil {
+		return err
+	}
+	args := flags.Args()
 	var n int
 	if len(args) > 1 {
 		return fmt.Errorf("too many arguments given")
@@ -224,7 +236,13 @@ func cmdPop(jq *JQShell, args []string) error {
 	return nil
 }
 
-func cmdLoad(jq *JQShell, args []string) error {
+func cmdLoad(jq *JQShell, flags *CmdFlags) error {
+	err := flags.Parse(nil)
+	if err != nil {
+		return err
+	}
+	args := flags.Args()
+
 	if len(args) != 1 {
 		return fmt.Errorf("expects one filename")
 	}
@@ -241,7 +259,12 @@ func cmdLoad(jq *JQShell, args []string) error {
 	return nil
 }
 
-func cmdWrite(jq *JQShell, args []string) error {
+func cmdWrite(jq *JQShell, flags *CmdFlags) error {
+	err := flags.Parse(nil)
+	if err != nil {
+		return err
+	}
+	args := flags.Args()
 	if len(args) == 0 {
 		r, err := jq.Input()
 		if err != nil {
@@ -279,7 +302,12 @@ func cmdWrite(jq *JQShell, args []string) error {
 	return fmt.Errorf("file output not allowed")
 }
 
-func cmdRaw(jq *JQShell, args []string) error {
+func cmdRaw(jq *JQShell, flags *CmdFlags) error {
+	err := flags.Parse(nil)
+	if err != nil {
+		return err
+	}
+	args := flags.Args()
 	if len(args) == 0 {
 		r, err := jq.Input()
 		if err != nil {
@@ -321,8 +349,7 @@ func cmdRaw(jq *JQShell, args []string) error {
 	return fmt.Errorf("file output not allowed")
 }
 
-func cmdExec(jq *JQShell, args []string) error {
-	flags := Flags("exec", args)
+func cmdExec(jq *JQShell, flags *CmdFlags) error {
 	ignore := flags.Bool("ignore", false, "ignore process exit status")
 	filename := flags.String("o", "", "a json file produced by the command")
 	pfilename := flags.String("O", "", "like -O but the file will not be deleted by jqsh")
@@ -331,7 +358,7 @@ func cmdExec(jq *JQShell, args []string) error {
 	if err != nil {
 		return err
 	}
-	args = flags.Args()
+	args := flags.Args()
 
 	var out io.Writer
 	var path string
