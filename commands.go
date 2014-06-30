@@ -442,14 +442,16 @@ func IsHelp(err error) bool {
 
 type CmdFlags struct {
 	*flag.FlagSet
+	w       io.Writer
 	name    string
 	args    []string
 	argsets [][]string
 }
 
 func Flags(name string, args []string) *CmdFlags {
-	set := flag.NewFlagSet(name, flag.PanicOnError)
-	f := &CmdFlags{set, name, args, nil}
+	set := flag.NewFlagSet(name, flag.ContinueOnError)
+	f := &CmdFlags{set, nil, name, args, nil}
+	f.SetOutput(os.Stderr)
 	set.Usage = f.usage
 	return f
 }
@@ -459,7 +461,11 @@ func (f *CmdFlags) ArgSet(args ...string) {
 }
 
 func (f *CmdFlags) usage() {
-	w := tabwriter.NewWriter(os.Stdout, 5, 2, 2, ' ', 0)
+	fw := f.w
+	if fw == nil {
+		fw = ioutil.Discard
+	}
+	w := tabwriter.NewWriter(fw, 5, 2, 2, ' ', 0)
 	fmt.Fprintf(w, "usage:\t")
 	if len(f.argsets) == 0 {
 		fmt.Fprintln(w, f.name)
@@ -474,20 +480,14 @@ func (f *CmdFlags) usage() {
 	f.PrintDefaults()
 }
 
+func (f *CmdFlags) SetOutput(w io.Writer) {
+	f.w = w
+	f.FlagSet.SetOutput(w)
+}
+
 func (f *CmdFlags) Parse(args *[]string) (err error) {
-	defer func() {
-		if e := recover(); e != nil {
-			var iserr bool
-			err, iserr = e.(error)
-			if iserr {
-				return
-			}
-			err = fmt.Errorf("%v", e)
-		}
-	}()
 	if args == nil {
 		args = &f.args
 	}
-	f.FlagSet.Parse(*args)
-	return nil
+	return f.FlagSet.Parse(*args)
 }
