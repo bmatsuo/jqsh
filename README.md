@@ -1,4 +1,4 @@
-#jqsh
+#jqsh [![Build Status](https://travis-ci.org/bmatsuo/jqsh.svg?branch=master)](https://travis-ci.org/bmatsuo/jqsh)
 
 An interactive wrapper to the [jq](http://stedolan.github.io/jq/) command line utility.
 
