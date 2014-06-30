@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"syscall"
 )
 
 func Execute(outw, errw io.Writer, in io.Reader, stop <-chan struct{}, jq string, s *JQStack) (int64, int64, error) {
@@ -140,6 +141,48 @@ func cmdWrite(jq *JQShell, args []string) error {
 		w.Close()
 		if err != nil {
 			return ExecError{[]string{"jq"}, err}
+		}
+		pageErr := <-pageerr
+		if pageErr != nil {
+			jq.log("pager: ", pageErr)
+		}
+		return nil
+	}
+	return fmt.Errorf("file output not allowed")
+}
+
+func cmdRaw(jq *JQShell, args []string) error {
+	if len(args) == 0 {
+		r, err := jq.Input()
+		if err != nil {
+			return err
+		}
+		defer r.Close()
+		w, errch := Page(nil)
+		select {
+		case err := <-errch:
+			return err
+		default:
+			break
+		}
+		pageerr := make(chan error, 1)
+		stop := make(chan struct{})
+		go func() {
+			err := <-errch
+			close(stop)
+			if err != nil {
+				pageerr <- err
+			}
+			close(pageerr)
+		}()
+		_, err = io.Copy(w, r)
+		w.Close()
+		if perr, ok := err.(*os.PathError); ok {
+			if perr.Err == syscall.EPIPE {
+				jq.Log.Printf("DEBUG broken pipe")
+			}
+		} else if err != nil {
+			return fmt.Errorf("copying file: %#v", err)
 		}
 		pageErr := <-pageerr
 		if pageErr != nil {

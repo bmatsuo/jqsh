@@ -80,7 +80,6 @@ func Page(pager []string) (io.WriteCloser, <-chan error) {
 	}
 	go func() {
 		err := cmd.Run()
-		log.Println("!!!!!!")
 		stdin.Close()
 		if err != nil {
 			errch <- err
@@ -221,6 +220,7 @@ func NewJQShell(sh ShellReader) *JQShell {
 		"load":  JQShellCommandFunc(cmdLoad),
 		"exec":  JQShellCommandFunc(cmdExec),
 		"write": JQShellCommandFunc(cmdWrite),
+		"raw":   JQShellCommandFunc(cmdRaw),
 		"quit":  JQShellCommandFunc(cmdQuit),
 	}
 	jq.wg.Add(1)
