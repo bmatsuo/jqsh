@@ -158,7 +158,11 @@ type Filter interface {
 var FilterJoinString = " | "
 
 func JoinFilter(filter Filter) string {
-	return strings.Join(filter.JQFilter(), FilterJoinString)
+	fs := filter.JQFilter()
+	if len(fs) == 0 {
+		return "."
+	}
+	return strings.Join(fs, FilterJoinString)
 }
 
 type FilterString string
