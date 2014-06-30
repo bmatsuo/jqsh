@@ -385,8 +385,9 @@ func cmdExec(jq *JQShell, args []string) error {
 }
 
 func _cmdExecInput(jq *JQShell, name string, args ...string) func() (io.ReadCloser, error) {
+
 	return func() (io.ReadCloser, error) {
-		cmd := exec.Command(args[0], args[1:]...)
+		cmd := exec.Command(name, args...)
 		//cmd.Stdin = os.Stdin
 		cmd.Stderr = os.Stderr
 		stdout, err := cmd.StdoutPipe()
@@ -413,12 +414,13 @@ func _cmdExecInput(jq *JQShell, name string, args ...string) func() (io.ReadClos
 
 type CmdFlags struct {
 	*flag.FlagSet
+	name string
 	args []string
 }
 
 func Flags(name string, args []string) *CmdFlags {
 	set := flag.NewFlagSet(name, flag.PanicOnError)
-	return &CmdFlags{set, args}
+	return &CmdFlags{set, name, args}
 }
 
 func (f *CmdFlags) Parse(args *[]string) (err error) {
