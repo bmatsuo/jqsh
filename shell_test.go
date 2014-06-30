@@ -71,15 +71,23 @@ func TestShellReaderReadCommand_multi(t *testing.T) {
 
 func TestShellReaderReadCommand_single(t *testing.T) {
 	cmd := func(strs ...string) []string { return strs }
-	for _ = range []struct {
+	for i, test := range []struct {
 		str string
 		cmd []string
 	}{
-		{":pop\n", cmd("pop")},
-		{":push .items .[]\n", cmd("push", ".items", ".[]")},
-		{":push +.items | .[]\n", cmd("push", ".items | .[]")},
-		{".items | .[]\n", cmd("push", ".items | .[]")},
-		{"\n", cmd("push", ".items | .[]")},
+		{":pop", cmd("pop")},
+		{":push .items .[]", cmd("push", ".items", ".[]")},
+		{":push +.items | .[]", cmd("push", ".items | .[]")},
+		{".items | .[]", cmd("push", ".items | .[]")},
+		{"\n", cmd("write")},
 	} {
+		cmd, _, err := StringShellReader(test.str).ReadCommand()
+		if err != nil {
+			t.Errorf("command %d (%q) %v", i, test.str, err)
+			continue
+		}
+		if !reflect.DeepEqual(cmd, test.cmd) {
+			t.Errorf("command %d (%q) got %q (expect %q)", i, test.str, cmd, test.cmd)
+		}
 	}
 }

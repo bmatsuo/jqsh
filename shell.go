@@ -100,7 +100,7 @@ func (s *SimpleShellReader) ReadCommand() (cmd []string, eof bool, err error) {
 	bs = bytes.TrimFunc(bs, unicode.IsSpace)
 
 	if len(bs) == 0 {
-		return []string{}, eof, nil
+		return []string{"write"}, eof, nil
 	} else if bs[0] != ':' {
 		str := string(bs)
 		cmd := []string{"push", str}
@@ -118,9 +118,6 @@ func (s *SimpleShellReader) ReadCommand() (cmd []string, eof bool, err error) {
 	cmd = strings.Fields(string(bs))
 	if last != nil {
 		cmd = append(cmd, string(*last))
-	}
-	if len(cmd) == 0 {
-		cmd = []string{"write"}
 	}
 	return cmd, eof, nil
 }
