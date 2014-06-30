@@ -10,6 +10,8 @@ in your PATH. For example, "/usr/bin".
 
     sudo tar -C /usr/bin -xvzf jqsh0.2.darwin-amd64.tar.gz
 
+**NOTE**: The above command varies depending on the current version of jqsh.
+
 Or, if Go is installed on your system, you can install the unstable HEAD using
 `go get`.
 
