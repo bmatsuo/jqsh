@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strings"
 	"unicode/utf8"
 
 	"github.com/bmatsuo/go-lexer"
@@ -148,4 +149,50 @@ func Execute(outw, errw io.Writer, in io.Reader, stop <-chan struct{}, jq string
 	nout := outcounter.n
 	nerr := errcounter.n
 	return nout, nerr, err
+}
+
+type JQFilter interface {
+	JQFilter() []string
+}
+
+var JQFilterJoin = " | "
+
+func JoinFilter(filter JQFilter) string {
+	return strings.Join(filter.JQFilter(), JQFilterJoin)
+}
+
+type JQFilterString string
+
+func (s JQFilterString) JQFilter() []string {
+	return []string{string(s)}
+}
+
+type JQStack struct {
+	pipe []JQFilter
+}
+
+// Args returns arguments for the jq command line utility.
+func (s *JQStack) JQFilter() []string {
+	if s == nil {
+		return []string{"."}
+	}
+	var args []string
+	for _, cmd := range s.pipe {
+		args = append(args, cmd.JQFilter()...)
+	}
+	return args
+}
+
+func (s *JQStack) Push(cmd JQFilter) {
+	s.pipe = append(s.pipe, cmd)
+}
+
+func (s *JQStack) Pop() (JQFilter, error) {
+	if len(s.pipe) == 0 {
+		return nil, ErrStackEmpty
+	}
+	n := len(s.pipe)
+	filt := s.pipe[n-1]
+	s.pipe = s.pipe[:n-1]
+	return filt, nil
 }
