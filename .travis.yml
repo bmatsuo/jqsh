@@ -1,4 +1,8 @@
 language: go
+before_install:
+- wget -O /tmp/jq https://stedolan.github.io/jq/download/linux64/jq
+- sudo chmod +x /tmp/jq
+- sudo mv /tmp/jq /usr/bin/jq
 go:
 - 1.1
 - 1.2
