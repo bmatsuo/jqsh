@@ -30,8 +30,8 @@ the input, equivalent to the "write" command.
 
 Command reference
 
-A list of commands and other interactive help topics can be found with through
-the "help" command.
+A list of commands and other interactive help topics can be found through the
+"help" command.
 
 	> :help
 
