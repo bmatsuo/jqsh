@@ -7,6 +7,7 @@ import (
 	"log"
 	"os/exec"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/bmatsuo/go-lexer"
@@ -64,7 +65,8 @@ func CheckJQVersion(path string) (string, error) {
 	if len(items) < 2 {
 		panic("expect at least two tokens")
 	}
-	return string(bs), nil
+	vstr := string(bytes.TrimFunc(bs, unicode.IsSpace))
+	return vstr, nil
 }
 
 const (

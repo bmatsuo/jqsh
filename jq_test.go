@@ -2,7 +2,9 @@ package main
 
 import (
 	"reflect"
+	"strings"
 	"testing"
+	"unicode"
 )
 
 type MockFilter []string
@@ -51,6 +53,13 @@ func TestCheckJQVersion(t *testing.T) {
 	}
 	if venv == "" {
 		t.Fatalf("empty env jq version string")
+	}
+	ispace := strings.LastIndexFunc(venv, unicode.IsSpace)
+	if ispace >= 0 {
+		cs := []rune(venv[ispace:])
+		if len(cs) == 1 {
+			t.Fatalf("jq version string has trailing space: %q", venv)
+		}
 	}
 	t.Logf("env jq version: %q", venv)
 	jqbin, err := LocateJQ("")
