@@ -11,6 +11,61 @@ func (filter MockFilter) JQFilter() []string {
 	return filter
 }
 
+func TestLocateJQ(t *testing.T) {
+	jqbin, err := LocateJQ("")
+	if err != nil {
+		t.Fatal("unable to find jq in PATH: %v", err)
+	}
+	if jqbin == "" {
+		t.Fatalf("no jq binary path returned")
+	}
+	_jqbin, err := LocateJQ(jqbin)
+	if err != nil {
+		t.Fatalf("unable to find jq from a concrete path: %v", err)
+	}
+	if jqbin != _jqbin {
+		t.Fatalf("different path returned when from concrete path argument %q (got %q)", jqbin, _jqbin)
+	}
+
+	badjqs := []string{
+		"/testing/no/jq/here",
+		".",
+		"jq.go",
+		"/bin/bash",
+	}
+	for _, badjq := range badjqs {
+		badbin, err := LocateJQ(badjq)
+		if err == nil {
+			t.Errorf("no error returned for jq binary path: %q", badjq)
+		}
+		if badbin != "" {
+			t.Errorf("non-empty bin %q return for jq binary path: %q", badbin, badjq)
+		}
+	}
+}
+
+func TestCheckJQVersion(t *testing.T) {
+	venv, err := CheckJQVersion("")
+	if err != nil {
+		t.Fatalf("env jq version: %v", err)
+	}
+	if venv == "" {
+		t.Fatalf("empty env jq version string")
+	}
+	t.Logf("env jq version: %q", venv)
+	jqbin, err := LocateJQ("")
+	if err != nil {
+		t.Fatalf("locating jq: %v", err)
+	}
+	v, err := CheckJQVersion(jqbin)
+	if err != nil {
+		t.Fatalf("%s version: %v", jqbin, venv)
+	}
+	if v != venv {
+		t.Fatalf("different version string return from concrete path argument %q (got %q; expected %q)", jqbin, v, venv)
+	}
+}
+
 func TestJoinFilter(t *testing.T) {
 	filter := JoinFilter(MockFilter{"hello", "world"})
 	if filter != "hello | world" {

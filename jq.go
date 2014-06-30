@@ -1,10 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"log"
-	"os"
 	"os/exec"
 	"strings"
 	"unicode/utf8"
@@ -13,6 +13,8 @@ import (
 )
 
 var ErrJQNotFound = fmt.Errorf("jq executable not found")
+
+var jqVersionPrefixBytes = []byte("jq-")
 
 func LocateJQ(path string) (string, error) {
 	if path == "" {
@@ -25,20 +27,23 @@ func LocateJQ(path string) (string, error) {
 		}
 		return path, nil
 	}
-	info, err := os.Stat(path)
-	if os.IsNotExist(err) {
-		return "", ErrJQNotFound
-	}
+	bs, err := exec.Command(path, "--version").CombinedOutput()
 	if err != nil {
 		return "", err
 	}
-	if info.IsDir() {
-		return "", fmt.Errorf("path is a directory")
+	if !bytes.HasPrefix(bs, jqVersionPrefixBytes) {
+		return "", fmt.Errorf("executable doesn't look like jq")
 	}
 	return path, nil
 }
 
 func CheckJQVersion(path string) (string, error) {
+	var err error
+	path, err = LocateJQ(path)
+	if err != nil {
+		return "", err
+	}
+
 	cmd := exec.Command(path, "--version")
 	bs, err := cmd.CombinedOutput()
 	if err != nil {
