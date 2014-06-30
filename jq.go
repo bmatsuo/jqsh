@@ -49,14 +49,12 @@ func CheckJQVersion(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	lex := lexer.New(scanJQVersion, bs)
+	lex := lexer.New(scanJQVersion, string(bs))
 	var items []*lexer.Item
 	for {
 		item := lex.Next()
-		//log.Printf("%q", item)
-		err := item.Error()
-		if err != nil {
-			return "", err
+		if item.Type == lexer.ItemError {
+			return "", fmt.Errorf("%s", item.Value)
 		}
 		if item.Type == lexer.ItemEOF {
 			break
