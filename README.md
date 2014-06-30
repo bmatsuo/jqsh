@@ -11,8 +11,8 @@ the current version of jqsh (it is for jqsh0.3 on OS X).
 
     sudo tar -C /usr/bin -xvzf jqsh0.3.darwin-amd64.tar.gz
 
-If Go is installed on your system, you can instead install the latest
-(unstable) version of jqsh using `go get`.
+If Go is installed on your system, you can instead compile the latest
+(unstable) version of jqsh.
 
     go get -u github.com/bmatsuo/jqsh
 
