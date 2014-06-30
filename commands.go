@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"text/tabwriter"
 	"unicode/utf8"
 )
 
@@ -441,13 +442,36 @@ func _cmdExecInput(jq *JQShell, name string, args ...string) func() (io.ReadClos
 
 type CmdFlags struct {
 	*flag.FlagSet
-	name string
-	args []string
+	name    string
+	args    []string
+	argsets [][]string
 }
 
 func Flags(name string, args []string) *CmdFlags {
 	set := flag.NewFlagSet(name, flag.PanicOnError)
-	return &CmdFlags{set, name, args}
+	f := &CmdFlags{set, name, args, nil}
+	set.Usage = f.usage
+	return f
+}
+
+func (f *CmdFlags) ArgSet(args ...string) {
+	f.argsets = append(f.argsets, args)
+}
+
+func (f *CmdFlags) usage() {
+	w := tabwriter.NewWriter(os.Stdout, 5, 2, 2, ' ', 0)
+	fmt.Fprintf(w, "usage:\t")
+	if len(f.argsets) == 0 {
+		fmt.Fprintln(w, f.name)
+	} else {
+		sets := f.argsets
+		fmt.Fprintln(w, strings.Join(sets[0], " "))
+		for _, set := range sets[1:] {
+			fmt.Fprintln(w, "\t"+strings.Join(set, " "))
+		}
+	}
+	w.Flush()
+	f.PrintDefaults()
 }
 
 func (f *CmdFlags) Parse(args *[]string) (err error) {
