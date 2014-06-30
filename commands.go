@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"unicode/utf8"
 )
 
 func Execute(outw, errw io.Writer, in io.Reader, stop <-chan struct{}, jq string, s *JQStack) (int64, int64, error) {
@@ -19,8 +20,7 @@ func Execute(outw, errw io.Writer, in io.Reader, stop <-chan struct{}, jq string
 	}
 	outcounter := &writeCounter{0, outw}
 	errcounter := &writeCounter{0, errw}
-	filter := strings.Join(s.JQFilter(), " | ")
-	cmd := exec.Command(jq, "-C", filter) // TODO test if stdout is a terminal
+	cmd := exec.Command(jq, "-C", JoinFilter(s)) // TODO test if stdout is a terminal
 	cmd.Stdin = in
 	cmd.Stdout = outcounter
 	cmd.Stderr = errcounter
@@ -61,6 +61,46 @@ func (fn JQShellCommandFunc) ExecuteShellCommand(jq *JQShell, args []string) err
 
 func cmdQuit(jq *JQShell, args []string) error {
 	return ShellExit
+}
+
+func cmdFilter(jq *JQShell, args []string) error {
+	flags := Flags("filter", args)
+	jqsyntax := flags.Bool("jq", false, "print the filter with jq syntax")
+	qchars := flags.String("quote", "", "quote and escaped quote runes the -jq filter string (e.g. \"'\\'\")")
+	err := flags.Parse(nil)
+	if err != nil {
+		return err
+	}
+	if *jqsyntax {
+		var quote, qesc string
+		if *qchars != "" {
+			qrune, n := utf8.DecodeRuneInString(*qchars)
+			if qrune == utf8.RuneError && n == 1 {
+				return fmt.Errorf("invalid quote runes %q: %v", *qchars, err)
+			}
+			quote = string([]rune{qrune})
+			qesc = (*qchars)[n:]
+			if qesc == "" {
+				return fmt.Errorf("missing escape for quote character '%c'", qrune)
+			}
+		}
+		filter := JoinFilter(jq.Stack)
+		if quote != "" {
+			filter = strings.Replace(filter, quote, qesc, -1)
+			filter = quote + filter + quote
+		}
+		fmt.Println(filter)
+		return nil
+	}
+	filters := jq.Stack.JQFilter()
+	if len(filters) == 0 {
+		fmt.Fprintln(os.Stderr, "no filter")
+		return nil
+	}
+	for i, piece := range filters {
+		fmt.Printf("[%02d] %v\n", i, piece)
+	}
+	return nil
 }
 
 func cmdPush(jq *JQShell, args []string) error {
@@ -194,7 +234,7 @@ func cmdRaw(jq *JQShell, args []string) error {
 }
 
 func cmdExec(jq *JQShell, args []string) error {
-	flags := Flags("exec", append([]string{"exec"}, args...))
+	flags := Flags("exec", args)
 	ignore := flags.Bool("ignore", false, "ignore process exit status")
 	filename := flags.String("o", "", "a json file produced by the command")
 	pfilename := flags.String("O", "", "like -O but the file will not be deleted by jqsh")

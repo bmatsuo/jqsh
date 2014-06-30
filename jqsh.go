@@ -214,14 +214,15 @@ func NewJQShell(sh ShellReader) *JQShell {
 		sh:    sh,
 	}
 	jq.lib = map[string]JQShellCommand{
-		"":      nil,
-		"push":  JQShellCommandFunc(cmdPush),
-		"pop":   JQShellCommandFunc(cmdPop),
-		"load":  JQShellCommandFunc(cmdLoad),
-		"exec":  JQShellCommandFunc(cmdExec),
-		"write": JQShellCommandFunc(cmdWrite),
-		"raw":   JQShellCommandFunc(cmdRaw),
-		"quit":  JQShellCommandFunc(cmdQuit),
+		"":       nil,
+		"push":   JQShellCommandFunc(cmdPush),
+		"pop":    JQShellCommandFunc(cmdPop),
+		"filter": JQShellCommandFunc(cmdFilter),
+		"load":   JQShellCommandFunc(cmdLoad),
+		"exec":   JQShellCommandFunc(cmdExec),
+		"write":  JQShellCommandFunc(cmdWrite),
+		"raw":    JQShellCommandFunc(cmdRaw),
+		"quit":   JQShellCommandFunc(cmdQuit),
 	}
 	jq.wg.Add(1)
 	go jq.loop()
@@ -334,7 +335,7 @@ func (jq *JQShell) loop() {
 				}
 				if err != nil {
 					jq.Log.Print(err)
-				} else if cmd.cmd[0] != "write" && cmd.cmd[0] != "raw" {
+				} else if cmd.cmd[0] != "write" && cmd.cmd[0] != "raw" && cmd.cmd[0] != "filter" {
 					// TODO clean this up. (cmdPushInteractive, cmdPeek)
 					err := jq.execute([]string{"write"}, nil)
 					if err != nil {
@@ -405,6 +406,12 @@ func (jq *JQShell) execute(cmd []string, err error) error {
 
 type JQFilter interface {
 	JQFilter() []string
+}
+
+var JQFilterJoin = " | "
+
+func JoinFilter(filter JQFilter) string {
+	return strings.Join(filter.JQFilter(), JQFilterJoin)
 }
 
 type JQFilterString string
