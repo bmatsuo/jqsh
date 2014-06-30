@@ -18,32 +18,27 @@ import (
 var ErrStackEmpty = fmt.Errorf("the stack is empty")
 
 func main() {
-	execbin := flag.String("-exec", "", "executable data should be loaded with (e.g. 'curl')")
-	execnocache := flag.Bool("-exec.nocache", false, "disable caching of the -exec result")
 	flag.Parse()
 
 	args := flag.Args()
 	var initcmds [][]string
-	doexec := func(name string, args ...string) {
-		panic("executing commands is disabled for now")
+	doexec := func(cache bool, name string, args ...string) {
 		cmd := make([]string, 0, 3+len(args))
 		cmd = append(cmd, "exec")
-		if *execnocache {
-			cmd = append(cmd, "-nocache")
+		if !cache {
+			cmd = append(cmd, "-c")
 		}
+		cmd = append(cmd, name)
+		cmd = append(cmd, args...)
 		initcmds = append(initcmds, cmd)
 	}
 	switch {
-	case *execbin != "":
-		doexec(*execbin, args...)
-	// loading files
 	case len(args) == 1:
 		initcmds = [][]string{
 			{"load", args[0]},
 		}
 	case len(args) > 1:
-		*execnocache = true
-		doexec("cat", args...)
+		doexec(false, "cat", args...)
 	}
 
 	sh := NewInitShellReader(nil, initcmds)
@@ -211,7 +206,9 @@ func (sh *InitShellReader) ReadCommand() ([]string, bool, error) {
 type JQShell struct {
 	Log      *log.Logger
 	Stack    *JQStack
+	inputfn  func() (io.ReadCloser, error)
 	filename string
+	istmp    bool // the filename at path should be deleted when changed
 	lib      map[string]JQShellCommand
 	sh       ShellReader
 	err      error
@@ -233,6 +230,7 @@ func NewJQShell(sh ShellReader) *JQShell {
 		"push":  JQShellCommandFunc(cmdPush),
 		"pop":   JQShellCommandFunc(cmdPop),
 		"load":  JQShellCommandFunc(cmdLoad),
+		"exec":  JQShellCommandFunc(cmdExec),
 		"write": JQShellCommandFunc(cmdWrite),
 		"quit":  JQShellCommandFunc(cmdQuit),
 	}
@@ -241,11 +239,35 @@ func NewJQShell(sh ShellReader) *JQShell {
 	return jq
 }
 
+func (jq *JQShell) SetInputFile(path string, istmp bool) {
+	jq.inputfn = nil
+	jq.filename = path
+	jq.istmp = istmp
+}
+
+func (jq *JQShell) SetInput(fn func() (io.ReadCloser, error)) {
+	if jq.filename != "" {
+		if jq.istmp {
+			err := os.Remove(jq.filename)
+			if err != nil {
+				jq.Log.Printf("removing temporary file: %v", err)
+			}
+		}
+		jq.filename = ""
+		jq.istmp = false
+	}
+	jq.inputfn = fn
+}
+
 func (jq *JQShell) Input() (io.ReadCloser, error) {
-	if jq.filename == "" {
+	switch {
+	case jq.filename != "":
+		return os.Open(jq.filename)
+	case jq.inputfn != nil:
+		return jq.inputfn()
+	default:
 		return nil, fmt.Errorf("no input")
 	}
-	return os.Open(jq.filename)
 }
 
 func (jq *JQShell) Wait() error {
@@ -266,6 +288,19 @@ func isShellExit(err error) bool {
 	return false
 }
 
+func (jq *JQShell) ClearInput() {
+	if jq.inputfn != nil {
+		jq.inputfn = nil
+	}
+	if jq.filename != "" && jq.istmp {
+		err := os.Remove(jq.filename)
+		if err != nil {
+			// not a critical error
+			jq.Log.Printf("removingtemporary file %v: %v", jq.filename, err)
+		}
+	}
+}
+
 func (jq *JQShell) loop() {
 	stop := make(chan struct{})
 	_stop := func() { close(stop) }
@@ -280,6 +315,14 @@ func (jq *JQShell) loop() {
 	for {
 		select {
 		case <-stop:
+			// remove any temporary file
+			if jq.filename != "" && jq.istmp {
+				err := os.Remove(jq.filename)
+				if err != nil {
+					// not a critical error
+					jq.Log.Printf("removingtemporary file %v: %v", jq.filename, err)
+				}
+			}
 			jq.wg.Done()
 			return
 		case <-ready:
