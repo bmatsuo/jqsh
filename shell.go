@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"sync/atomic"
 	"unicode"
 )
 
@@ -47,19 +46,6 @@ func Page(pager []string) (io.WriteCloser, <-chan error) {
 		fmt.Print("\033[0m")
 	}()
 	return stdin, errch
-}
-
-type writeCounter struct {
-	n int64
-	w io.Writer
-}
-
-func (w *writeCounter) Write(bs []byte) (int, error) {
-	n, err := w.w.Write(bs)
-	if n > 0 {
-		atomic.AddInt64(&w.n, int64(n))
-	}
-	return n, err
 }
 
 // BUG: this is not an idiomatic interface.

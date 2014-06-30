@@ -7,6 +7,7 @@ import (
 	"log"
 	"os/exec"
 	"strings"
+	"sync/atomic"
 	"unicode"
 	"unicode/utf8"
 
@@ -121,6 +122,19 @@ func scanJQVersion(lex *lexer.Lexer) lexer.StateFn {
 	}
 	lex.Emit(lexer.ItemEOF)
 	return nil
+}
+
+type writeCounter struct {
+	n int64
+	w io.Writer
+}
+
+func (w *writeCounter) Write(bs []byte) (int, error) {
+	n, err := w.w.Write(bs)
+	if n > 0 {
+		atomic.AddInt64(&w.n, int64(n))
+	}
+	return n, err
 }
 
 func Execute(outw, errw io.Writer, in io.Reader, stop <-chan struct{}, jq string, s *JQStack) (int64, int64, error) {
