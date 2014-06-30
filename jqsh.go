@@ -50,6 +50,7 @@ func main() {
 	fmt.Println("To learn more about the environment type \":help\"")
 	fmt.Println()
 	fmt.Println("To learn more about jqsh see the online documentation")
+	fmt.Println()
 	fmt.Println("\thttps://github.com/bmatsuo/jqsh")
 	fmt.Println()
 	sh := NewInitShellReader(nil, initcmds)
