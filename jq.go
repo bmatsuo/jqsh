@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"io"
+	"log"
 	"os"
 	"os/exec"
 	"unicode/utf8"
@@ -45,9 +47,13 @@ func CheckJQVersion(path string) (string, error) {
 	var items []*lexer.Item
 	for {
 		item := lex.Next()
+		//log.Printf("%q", item)
 		err := item.Error()
 		if err != nil {
 			return "", err
+		}
+		if item.Type == lexer.ItemEOF {
+			break
 		}
 		items = append(items, item)
 	}
@@ -64,6 +70,7 @@ const (
 )
 
 func scanJQVersion(lex *lexer.Lexer) lexer.StateFn {
+	// prefix "jq-"
 	if !lex.Accept("j") {
 		return lex.Errorf("not a jq version")
 	}
@@ -75,21 +82,25 @@ func scanJQVersion(lex *lexer.Lexer) lexer.StateFn {
 	}
 	lex.Ignore()
 
+	// major version
 	if lex.AcceptRun("0123456789") == 0 {
 		return lex.Errorf("not a jq version")
 	}
 	lex.Emit(jqVersionMajor)
 
+	// dot
 	if !lex.Accept(".") {
 		return lex.Errorf("not a jq version")
 	}
 	lex.Ignore()
 
+	// minor version
 	if lex.AcceptRun("0123456789") == 0 {
 		return lex.Errorf("not a jq version")
 	}
 	lex.Emit(jqVersionMinor)
 
+	// version suffix
 	for {
 		c, n := lex.Advance()
 		if c == utf8.RuneError && n == 1 {
@@ -99,8 +110,42 @@ func scanJQVersion(lex *lexer.Lexer) lexer.StateFn {
 			if lex.Pos() > lex.Start() {
 				lex.Emit(jqVersionSuffix)
 			}
+			break
 		}
 	}
 	lex.Emit(lexer.ItemEOF)
 	return nil
+}
+
+func Execute(outw, errw io.Writer, in io.Reader, stop <-chan struct{}, jq string, s *JQStack) (int64, int64, error) {
+	if jq == "" {
+		jq = "jq"
+	}
+	outcounter := &writeCounter{0, outw}
+	errcounter := &writeCounter{0, errw}
+	cmd := exec.Command(jq, "-C", JoinFilter(s)) // TODO test if stdout is a terminal
+	cmd.Stdin = in
+	cmd.Stdout = outcounter
+	cmd.Stderr = errcounter
+	done := make(chan error, 1)
+	err := cmd.Start()
+	if err != nil {
+		return 0, 0, err
+	}
+	go func() {
+		done <- cmd.Wait()
+		close(done)
+	}()
+	select {
+	case <-stop:
+		err := cmd.Process.Kill()
+		if err != nil {
+			log.Println("unable to kill process %d", cmd.Process.Pid)
+		}
+	case err = <-done:
+		break
+	}
+	nout := outcounter.n
+	nerr := errcounter.n
+	return nout, nerr, err
 }

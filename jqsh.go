@@ -81,7 +81,7 @@ func main() {
 	flag.Parse()
 	args := flag.Args()
 
-	jqpath, err := LocateJQ("")
+	jqbin, err := LocateJQ("")
 	if err == ErrJQNotFound {
 		fmt.Fprintln(os.Stderr, "Unable to locate the jq executable. Make sure it's installed.")
 		fmt.Fprintln(os.Stderr)
@@ -101,7 +101,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, "locating jq:", err)
 		os.Exit(1)
 	}
-	_, err = CheckJQVersion(jqpath)
+	_, err = CheckJQVersion(jqbin)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -140,7 +140,7 @@ func main() {
 	fmt.Println("\thttps://github.com/bmatsuo/jqsh")
 	fmt.Println()
 	sh := NewInitShellReader(nil, initcmds)
-	jq := NewJQShell(sh)
+	jq := NewJQShell(jqbin, sh)
 	err = jq.Wait()
 	if err != nil {
 		log.Fatal(err)
@@ -288,6 +288,7 @@ func (sh *InitShellReader) ReadCommand() ([]string, bool, error) {
 type JQShell struct {
 	Log      *log.Logger
 	Stack    *JQStack
+	bin      string
 	inputfn  func() (io.ReadCloser, error)
 	filename string
 	istmp    bool // the filename at path should be deleted when changed
@@ -297,7 +298,7 @@ type JQShell struct {
 	wg       sync.WaitGroup
 }
 
-func NewJQShell(sh ShellReader) *JQShell {
+func NewJQShell(bin string, sh ShellReader) *JQShell {
 	if sh == nil {
 		sh = NewShellReader(nil)
 	}
@@ -305,6 +306,7 @@ func NewJQShell(sh ShellReader) *JQShell {
 	jq := &JQShell{
 		Log:   log.New(os.Stderr, "jqsh: ", 0),
 		Stack: st,
+		bin:   bin,
 		sh:    sh,
 	}
 	jq.lib = Library()

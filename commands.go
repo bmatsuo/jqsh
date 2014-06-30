@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
 	"strconv"
@@ -15,39 +14,6 @@ import (
 	"text/tabwriter"
 	"unicode/utf8"
 )
-
-func Execute(outw, errw io.Writer, in io.Reader, stop <-chan struct{}, jq string, s *JQStack) (int64, int64, error) {
-	if jq == "" {
-		jq = "jq"
-	}
-	outcounter := &writeCounter{0, outw}
-	errcounter := &writeCounter{0, errw}
-	cmd := exec.Command(jq, "-C", JoinFilter(s)) // TODO test if stdout is a terminal
-	cmd.Stdin = in
-	cmd.Stdout = outcounter
-	cmd.Stderr = errcounter
-	done := make(chan error, 1)
-	err := cmd.Start()
-	if err != nil {
-		return 0, 0, err
-	}
-	go func() {
-		done <- cmd.Wait()
-		close(done)
-	}()
-	select {
-	case <-stop:
-		err := cmd.Process.Kill()
-		if err != nil {
-			log.Println("unable to kill process %d", cmd.Process.Pid)
-		}
-	case err = <-done:
-		break
-	}
-	nout := outcounter.n
-	nerr := errcounter.n
-	return nout, nerr, err
-}
 
 type Lib struct {
 	mut    sync.Mutex
@@ -312,7 +278,7 @@ func cmdWrite(jq *JQShell, flags *CmdFlags) error {
 			}
 			close(pageerr)
 		}()
-		_, _, err = Execute(w, os.Stderr, r, stop, "", jq.Stack)
+		_, _, err = Execute(w, os.Stderr, r, stop, jq.bin, jq.Stack)
 		w.Close()
 		if err != nil {
 			return ExecError{[]string{"jq"}, err}
@@ -444,7 +410,6 @@ func cmdExec(jq *JQShell, flags *CmdFlags) error {
 }
 
 func _cmdExecInput(jq *JQShell, name string, args ...string) func() (io.ReadCloser, error) {
-
 	return func() (io.ReadCloser, error) {
 		cmd := exec.Command(name, args...)
 		//cmd.Stdin = os.Stdin
