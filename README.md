@@ -29,6 +29,9 @@ The rlwrap program can be used instead to provide line editing and history.
 
     rlwrap -A -N jqsh
 
+**NOTE**: The `-N` option is advertised to only work on linux but it seems to
+provide some benefit to jqsh on OS X (10.9 Mavericks).
+
 ##License
 
 Copyright (c) 2014 Bryan Matsuo
