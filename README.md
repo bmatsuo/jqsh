@@ -5,15 +5,14 @@ An interactive wrapper to the [jq](http://stedolan.github.io/jq/) command line u
 ##Install
 
 Download a [binary distribution](https://github.com/bmatsuo/jqsh/releases) for
-your system  and extract it into your PATH (for example, in "/usr/bin").
-
-    sudo tar -C /usr/bin -xvzf jqsh0.2.darwin-amd64.tar.gz
-
-**NOTE**: The above command varies depending on your system and the current
+your system  and extract it into your PATH (for example, in "/usr/bin").  Be
+aware **the above command varies** depending on your system and the current
 version of jqsh.
 
-If Go is installed on your system, you can install the latest (unstable)
-version of jqsh using `go get`.
+    sudo tar -C /usr/bin -xvzf jqsh0.3.darwin-amd64.tar.gz
+
+If Go is installed on your system, you can instead install the latest
+(unstable) version of jqsh using `go get`.
 
     go get -u github.com/bmatsuo/jqsh
 
