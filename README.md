@@ -28,3 +28,10 @@ Jqsh does not have builtin support for readline or other fancy line editing.
 The rlwrap program can be used instead to provide line editing and history.
 
     rlwrap -A -N jqsh
+
+##License
+
+Copyright (c) 2014 Bryan Matsuo
+
+This source code is distributed under the MIT open source license.  A copy of
+the license agreement can be located in the LICENSE file.
