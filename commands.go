@@ -6,6 +6,8 @@ import (
 	"strconv"
 )
 
+var ShellExit = fmt.Errorf("exit")
+
 type JQShellCommand interface {
 	ExecuteShellCommand(*JQShell, []string) error
 }
@@ -14,6 +16,10 @@ type JQShellCommandFunc func(*JQShell, []string) error
 
 func (fn JQShellCommandFunc) ExecuteShellCommand(jq *JQShell, args []string) error {
 	return fn(jq, args)
+}
+
+func cmdQuit(jq *JQShell, args []string) error {
+	return ShellExit
 }
 
 func cmdPush(jq *JQShell, args []string) error {

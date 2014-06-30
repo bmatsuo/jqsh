@@ -15,18 +15,39 @@ import (
 	"unicode"
 )
 
-var ShellExit = fmt.Errorf("exit")
-
 var ErrStackEmpty = fmt.Errorf("the stack is empty")
 
 func main() {
-	loadfile := flag.String("-exec", "", "executable data should be loaded with (e.g. 'curl')")
+	execbin := flag.String("-exec", "", "executable data should be loaded with (e.g. 'curl')")
+	execnocache := flag.Bool("-exec.nocache", false, "disable caching of the -exec result")
 	flag.Parse()
+
 	args := flag.Args()
-	if *loadfile != "" && len(args) > 0 {
-		log.Fatal("arguments cannot be given when flag -f is provided")
+	var initcmds [][]string
+	doexec := func(name string, args ...string) {
+		panic("executing commands is disabled for now")
+		cmd := make([]string, 0, 3+len(args))
+		cmd = append(cmd, "exec")
+		if *execnocache {
+			cmd = append(cmd, "-nocache")
+		}
+		initcmds = append(initcmds, cmd)
 	}
-	jq := NewJQShell(nil)
+	switch {
+	case *execbin != "":
+		doexec(*execbin, args...)
+	// loading files
+	case len(args) == 1:
+		initcmds = [][]string{
+			{"load", args[0]},
+		}
+	case len(args) > 1:
+		*execnocache = true
+		doexec("cat", args...)
+	}
+
+	sh := NewInitShellReader(nil, initcmds)
+	jq := NewJQShell(sh)
 	err := jq.Wait()
 	if err != nil {
 		log.Fatal(err)
@@ -163,6 +184,30 @@ func (s *SimpleShellReader) ReadCommand() (cmd []string, eof bool, err error) {
 	return cmd, eof, nil
 }
 
+// An InitShellReader works like a SimpleShellReader but runs an init script
+// before reading any input.
+type InitShellReader struct {
+	i    int
+	init [][]string
+	r    *SimpleShellReader
+}
+
+func NewInitShellReader(r io.Reader, initcmds [][]string) *InitShellReader {
+	return &InitShellReader{0, initcmds, NewShellReader(r)}
+}
+
+func (sh *InitShellReader) ReadCommand() ([]string, bool, error) {
+	if sh == nil {
+		panic("nil shell")
+	}
+	if sh.i < len(sh.init) {
+		cmd := sh.init[sh.i]
+		sh.i++
+		return cmd, false, nil
+	}
+	return sh.r.ReadCommand()
+}
+
 type JQShell struct {
 	Log      *log.Logger
 	Stack    *JQStack
@@ -179,7 +224,7 @@ func NewJQShell(sh ShellReader) *JQShell {
 	}
 	st := new(JQStack)
 	jq := &JQShell{
-		Log:   log.New(os.Stderr, "jqsh: ", 0),
+		Log:   log.New(os.Stderr, "jqsh: ", log.Lshortfile),
 		Stack: st,
 		sh:    sh,
 	}
@@ -189,6 +234,7 @@ func NewJQShell(sh ShellReader) *JQShell {
 		"pop":   JQShellCommandFunc(cmdPop),
 		"load":  JQShellCommandFunc(cmdLoad),
 		"write": JQShellCommandFunc(cmdWrite),
+		"quit":  JQShellCommandFunc(cmdQuit),
 	}
 	jq.wg.Add(1)
 	go jq.loop()
@@ -205,6 +251,19 @@ func (jq *JQShell) Input() (io.ReadCloser, error) {
 func (jq *JQShell) Wait() error {
 	jq.wg.Wait()
 	return jq.err
+}
+
+func isShellExit(err error) bool {
+	if err == nil {
+		return false
+	}
+	if err == ShellExit {
+		return true
+	}
+	if err, ok := err.(ExecError); ok {
+		return isShellExit(err.err)
+	}
+	return false
 }
 
 func (jq *JQShell) loop() {
@@ -240,7 +299,7 @@ func (jq *JQShell) loop() {
 					err = nil
 				}
 				err = jq.execute(cmd.cmd, err)
-				if err == ShellExit {
+				if isShellExit(err) {
 					_stop()
 					return
 				}
@@ -249,21 +308,21 @@ func (jq *JQShell) loop() {
 					return
 				}
 				if err != nil {
-					jq.log(err)
+					jq.Log.Print(err)
 				} else {
 					// TODO clean this up. (cmdPushInteractive, cmdPeek)
 					err := jq.execute([]string{"write"}, nil)
 					if err != nil {
-						jq.log(err)
+						jq.Log.Print(err)
 						if cmd.cmd[0] == "push" {
 							npush := len(cmd.cmd) - 1
 							if npush == 0 {
 								npush = 1
 							}
-							jq.log("reverting push operation")
+							jq.Log.Print("reverting push operation")
 							err := jq.execute([]string{"pop", fmt.Sprint(npush)}, nil)
 							if err != nil {
-								jq.log(err)
+								jq.Log.Print(err)
 							}
 						}
 					}
@@ -293,8 +352,11 @@ func (err ExecError) Error() string {
 }
 
 func (jq *JQShell) execute(cmd []string, err error) error {
+	if isShellExit(err) {
+		return err
+	}
 	if err, ok := err.(InvalidCommandError); ok {
-		jq.log(err)
+		jq.Log.Print(err)
 		return nil
 	}
 	if err != nil {
