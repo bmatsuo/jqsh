@@ -218,6 +218,7 @@ func NewJQShell(sh ShellReader) *JQShell {
 		"push":   JQShellCommandFunc(cmdPush),
 		"pop":    JQShellCommandFunc(cmdPop),
 		"filter": JQShellCommandFunc(cmdFilter),
+		"script": JQShellCommandFunc(cmdScript),
 		"load":   JQShellCommandFunc(cmdLoad),
 		"exec":   JQShellCommandFunc(cmdExec),
 		"write":  JQShellCommandFunc(cmdWrite),
@@ -335,7 +336,7 @@ func (jq *JQShell) loop() {
 				}
 				if err != nil {
 					jq.Log.Print(err)
-				} else if cmd.cmd[0] != "write" && cmd.cmd[0] != "raw" && cmd.cmd[0] != "filter" {
+				} else if cmd.cmd[0] != "write" && cmd.cmd[0] != "raw" && cmd.cmd[0] != "filter" && cmd.cmd[0] != "script" {
 					// TODO clean this up. (cmdPushInteractive, cmdPeek)
 					err := jq.execute([]string{"write"}, nil)
 					if err != nil {

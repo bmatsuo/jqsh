@@ -63,6 +63,34 @@ func cmdQuit(jq *JQShell, args []string) error {
 	return ShellExit
 }
 
+func cmdScript(jq *JQShell, args []string) error {
+	flags := Flags("script", args)
+	flags.Bool("oneline", false, "do not print a hash-bang (#!) line")
+	flags.String("f", "", "specify the file argument to jq")
+	flags.Bool("F", false, "use the current file as the argument to jq")
+	flags.String("o", "", "path to write executable script")
+	flags.Parse(nil)
+
+	var script []string
+	script = append(script, "#!/usr/bin/env sh")
+	script = append(script, "")
+
+	f := JoinFilter(jq.Stack)
+	fesc := shellEscape(f, "'", "\\'")
+	bin := "jq"
+	cmd := []string{bin}
+	cmd = append(cmd, fesc)
+	cmd = append(cmd, `"${@}"`)
+	script = append(script, strings.Join(cmd, " "))
+
+	fmt.Println(strings.Join(script, "\n"))
+	return nil
+}
+
+func shellEscape(s, q, qesc string) string {
+	return q + strings.Replace(s, q, qesc, -1) + q
+}
+
 func cmdFilter(jq *JQShell, args []string) error {
 	flags := Flags("filter", args)
 	jqsyntax := flags.Bool("jq", false, "print the filter with jq syntax")
@@ -85,10 +113,7 @@ func cmdFilter(jq *JQShell, args []string) error {
 			}
 		}
 		filter := JoinFilter(jq.Stack)
-		if quote != "" {
-			filter = strings.Replace(filter, quote, qesc, -1)
-			filter = quote + filter + quote
-		}
+		filter = shellEscape(filter, quote, qesc)
 		fmt.Println(filter)
 		return nil
 	}
