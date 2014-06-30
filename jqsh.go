@@ -4,7 +4,7 @@ Command jqsh provides an interactive wrapper to the jq command line utility.
 Shell syntax
 
 The current shell syntax is rudimentory but it suffices.  Commands are prefixed
-with a color ':' and a command name followed by a space separated list of
+with a colon ':' and a command name followed by a space separated list of
 arguments.
 
 	> :load test.json
