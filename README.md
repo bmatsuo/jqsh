@@ -9,24 +9,27 @@ your system  and extract it into your PATH (for example, in "/usr/bin").  Be
 aware **the installation command below varies** depending on your system and
 the current version of jqsh (it is for jqsh0.3 on OS X).
 
-    sudo tar -C /usr/bin -xvzf jqsh0.3.darwin-amd64.tar.gz
+    $ sudo tar -C /usr/bin -xvzf jqsh0.3.darwin-amd64.tar.gz
 
 If Go is installed on your system, you can instead compile the latest
 (unstable) version of jqsh.
 
-    go get -u github.com/bmatsuo/jqsh
+    $ go get -u github.com/bmatsuo/jqsh
 
 ##Getting started
 
-Reference documentation can be found on
-[godoc.org](http://godoc.org/github.com/bmatsuo/jqsh).
+    $ jqsh
+    > :help
+
+Reference documentation is on
+[godoc.org](http://godoc.org/github.com/bmatsuo/jqsh) for now.
 
 ##Readline
 
 Jqsh does not have builtin support for readline or other fancy line editing.
 Use [rlwrap](http://utopia.knoware.nl/~hlub/rlwrap/#rlwrap) for now.
 
-    rlwrap -A -N jqsh
+    $ rlwrap -A -N jqsh
 
 The above command should work on Linux (untested) and [OS
 X](https://github.com/bmatsuo/jqsh/issues/3#issuecomment-47522319).
