@@ -430,6 +430,8 @@ func (jq *JQShell) loop() {
 				}
 				if err != nil {
 					jq.Log.Print(err)
+				} else if len(cmd.cmd) == 0 {
+					jq.Log.Println("empty command")
 				} else if cmd.cmd[0] != "write" && cmd.cmd[0] != "raw" && cmd.cmd[0] != "filter" && cmd.cmd[0] != "script" && cmd.cmd[0] != "help" {
 					// TODO clean this up. (cmdPushInteractive, cmdPeek)
 					err := jq.execute([]string{"write"}, nil)
