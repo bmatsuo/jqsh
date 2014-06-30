@@ -179,7 +179,7 @@ func cmdRaw(jq *JQShell, args []string) error {
 		w.Close()
 		if perr, ok := err.(*os.PathError); ok {
 			if perr.Err == syscall.EPIPE {
-				jq.Log.Printf("DEBUG broken pipe")
+				//jq.Log.Printf("DEBUG broken pipe")
 			}
 		} else if err != nil {
 			return fmt.Errorf("copying file: %#v", err)

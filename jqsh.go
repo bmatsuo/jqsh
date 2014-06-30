@@ -334,7 +334,7 @@ func (jq *JQShell) loop() {
 				}
 				if err != nil {
 					jq.Log.Print(err)
-				} else {
+				} else if cmd.cmd[0] != "write" && cmd.cmd[0] != "raw" {
 					// TODO clean this up. (cmdPushInteractive, cmdPeek)
 					err := jq.execute([]string{"write"}, nil)
 					if err != nil {
