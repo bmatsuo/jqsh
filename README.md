@@ -13,8 +13,8 @@ in your PATH. For example, "/usr/bin".
 **NOTE**: The above command varies depending on your system and the current
 version of jqsh.
 
-Or, if Go is installed on your system, you can install the unstable HEAD using
-`go get`.
+If Go is installed on your system, you can install the unstable HEAD using `go
+get`.
 
     go get github.com/bmatsuo/jqsh
 
