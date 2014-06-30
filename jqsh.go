@@ -19,8 +19,10 @@ var ErrStackEmpty = fmt.Errorf("the stack is empty")
 
 func main() {
 	flag.Parse()
-
 	args := flag.Args()
+
+	// setup initial commands to play before reading input.  single files are
+	// loaded with :load, multple files are loaded with :exec cat
 	var initcmds [][]string
 	doexec := func(cache bool, name string, args ...string) {
 		cmd := make([]string, 0, 3+len(args))
@@ -41,25 +43,14 @@ func main() {
 		doexec(false, "cat", args...)
 	}
 
+	// create a shell environment and wait for it to receive EOF or a 'quit'
+	// command.
 	sh := NewInitShellReader(nil, initcmds)
 	jq := NewJQShell(sh)
 	err := jq.Wait()
 	if err != nil {
 		log.Fatal(err)
 	}
-}
-
-type writeCounter struct {
-	n int64
-	w io.Writer
-}
-
-func (w *writeCounter) Write(bs []byte) (int, error) {
-	n, err := w.w.Write(bs)
-	if n > 0 {
-		atomic.AddInt64(&w.n, int64(n))
-	}
-	return n, err
 }
 
 // Page returns an io.Writer whose input will be written to the pager program.
@@ -100,38 +91,17 @@ func Page(pager []string) (io.WriteCloser, <-chan error) {
 	return stdin, errch
 }
 
-func Execute(outw, errw io.Writer, in io.Reader, stop <-chan struct{}, jq string, s *JQStack) (int64, int64, error) {
-	if jq == "" {
-		jq = "jq"
+type writeCounter struct {
+	n int64
+	w io.Writer
+}
+
+func (w *writeCounter) Write(bs []byte) (int, error) {
+	n, err := w.w.Write(bs)
+	if n > 0 {
+		atomic.AddInt64(&w.n, int64(n))
 	}
-	outcounter := &writeCounter{0, outw}
-	errcounter := &writeCounter{0, errw}
-	filter := strings.Join(s.JQFilter(), " | ")
-	cmd := exec.Command(jq, "-C", filter) // TODO test if stdout is a terminal
-	cmd.Stdin = in
-	cmd.Stdout = outcounter
-	cmd.Stderr = errcounter
-	done := make(chan error, 1)
-	err := cmd.Start()
-	if err != nil {
-		return 0, 0, err
-	}
-	go func() {
-		done <- cmd.Wait()
-		close(done)
-	}()
-	select {
-	case <-stop:
-		err := cmd.Process.Kill()
-		if err != nil {
-			log.Println("unable to kill process %d", cmd.Process.Pid)
-		}
-	case err = <-done:
-		break
-	}
-	nout := outcounter.n
-	nerr := errcounter.n
-	return nout, nerr, err
+	return n, err
 }
 
 type InvalidCommandError struct {
