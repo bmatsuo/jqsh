@@ -62,9 +62,15 @@ func Library() *Lib {
 	return lib
 }
 
-func (lib *Lib) help(jq *JQShell, args []string) {
+func (lib *Lib) help(jq *JQShell, args []string) error {
 	flags := Flags("help", args)
-	flags.Parse(nil)
+	err := flags.Parse(nil)
+	if IsHelp(err) {
+		err = nil
+	}
+	if err != nil {
+		return err
+	}
 	if len(args) == 0 {
 		fmt.Println("available commands:")
 		for name := range lib.cmds {
@@ -81,6 +87,7 @@ func (lib *Lib) help(jq *JQShell, args []string) {
 			fmt.Println("for information on a topic run `help <topic>`")
 		}
 	}
+	return nil
 }
 
 func (lib *Lib) Register(name string, cmd JQShellCommand) {
@@ -195,7 +202,11 @@ func cmdFilter(jq *JQShell, flags *CmdFlags) error {
 }
 
 func cmdPush(jq *JQShell, flags *CmdFlags) error {
+	flags.ArgSet("filter", "...")
 	err := flags.Parse(nil)
+	if IsHelp(err) {
+		return nil
+	}
 	if err != nil {
 		return err
 	}
@@ -210,7 +221,11 @@ func cmdPush(jq *JQShell, flags *CmdFlags) error {
 }
 
 func cmdPop(jq *JQShell, flags *CmdFlags) error {
+	flags.ArgSet("[n]")
 	err := flags.Parse(nil)
+	if IsHelp(err) {
+		return nil
+	}
 	if err != nil {
 		return err
 	}
@@ -238,7 +253,11 @@ func cmdPop(jq *JQShell, flags *CmdFlags) error {
 }
 
 func cmdLoad(jq *JQShell, flags *CmdFlags) error {
+	flags.ArgSet("filename")
 	err := flags.Parse(nil)
+	if IsHelp(err) {
+		return nil
+	}
 	if err != nil {
 		return err
 	}
@@ -261,7 +280,11 @@ func cmdLoad(jq *JQShell, flags *CmdFlags) error {
 }
 
 func cmdWrite(jq *JQShell, flags *CmdFlags) error {
+	flags.ArgSet("[filename]")
 	err := flags.Parse(nil)
+	if IsHelp(err) {
+		return nil
+	}
 	if err != nil {
 		return err
 	}
@@ -304,7 +327,11 @@ func cmdWrite(jq *JQShell, flags *CmdFlags) error {
 }
 
 func cmdRaw(jq *JQShell, flags *CmdFlags) error {
+	flags.ArgSet("[filename]")
 	err := flags.Parse(nil)
+	if IsHelp(err) {
+		return nil
+	}
 	if err != nil {
 		return err
 	}
@@ -351,11 +378,15 @@ func cmdRaw(jq *JQShell, flags *CmdFlags) error {
 }
 
 func cmdExec(jq *JQShell, flags *CmdFlags) error {
+	flags.ArgSet("name", "arg", "...")
 	ignore := flags.Bool("ignore", false, "ignore process exit status")
 	filename := flags.String("o", "", "a json file produced by the command")
 	pfilename := flags.String("O", "", "like -O but the file will not be deleted by jqsh")
 	nocache := flags.Bool("c", false, "disable caching of results (no effect with -o)")
 	err := flags.Parse(nil)
+	if IsHelp(err) {
+		return nil
+	}
 	if err != nil {
 		return err
 	}
@@ -440,6 +471,10 @@ func _cmdExecInput(jq *JQShell, name string, args ...string) func() (io.ReadClos
 	}
 }
 
+func IsHelp(err error) bool {
+	return err == flag.ErrHelp
+}
+
 type CmdFlags struct {
 	*flag.FlagSet
 	name    string
@@ -465,9 +500,9 @@ func (f *CmdFlags) usage() {
 		fmt.Fprintln(w, f.name)
 	} else {
 		sets := f.argsets
-		fmt.Fprintln(w, strings.Join(sets[0], " "))
+		fmt.Fprintln(w, f.name+" "+strings.Join(sets[0], " "))
 		for _, set := range sets[1:] {
-			fmt.Fprintln(w, "\t"+strings.Join(set, " "))
+			fmt.Fprintln(w, "\t"+f.name+" "+strings.Join(set, " "))
 		}
 	}
 	w.Flush()
