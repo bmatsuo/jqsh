@@ -28,6 +28,26 @@ the input, equivalent to the "write" command.
 
 	> :write
 
+That is all of the syntax in jqsh.
+
+The filter stack
+
+The core concept in jqsh in a stack of jq filters.  Filters create a larger
+filter when joined with pipes "|".  And maintaining a stack of filters allows
+exploritory querying of JSON structures.
+
+In the previous section the "push" command was demonstrated.  Pushing filters
+will effectively drill down into JSON structures.  To zoom out (or undo) the
+application of filters the "pop" command is used.
+
+	> :pop
+
+Called without arguments, "pop" will remove the most recent filter pushed onto
+the stack.  Multiple items can be popped off the stack by passing "pop" an
+integer argument (the number of items to pop).
+
+	> :pop 3
+
 Command reference
 
 A list of commands and other interactive help topics can be found through the
