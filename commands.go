@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"unicode/utf8"
 )
@@ -45,6 +46,68 @@ func Execute(outw, errw io.Writer, in io.Reader, stop <-chan struct{}, jq string
 	nout := outcounter.n
 	nerr := errcounter.n
 	return nout, nerr, err
+}
+
+type Lib struct {
+	mut    sync.Mutex
+	topics map[string]string
+	cmds   map[string]JQShellCommand
+}
+
+func Library() *Lib {
+	lib := new(Lib)
+	lib.topics = make(map[string]string)
+	lib.cmds = make(map[string]JQShellCommand)
+	return lib
+}
+
+func (lib *Lib) help(jq *JQShell, args []string) {
+	flags := Flags("help", args)
+	flags.Parse(nil)
+	if len(args) == 0 {
+		fmt.Println("available commands:")
+		for name := range lib.cmds {
+			fmt.Println("\t" + name)
+		}
+		fmt.Println("\thelp")
+		fmt.Println("pass -h to a command for usage details")
+
+		if len(lib.topics) > 0 {
+			fmt.Println("additional help topics:")
+			for name := range lib.topics {
+				fmt.Println("\t" + name)
+			}
+			fmt.Println("for information on a topic run `help <topic>`")
+		}
+	}
+}
+
+func (lib *Lib) Register(name string, cmd JQShellCommand) {
+	lib.mut.Lock()
+	defer lib.mut.Unlock()
+	_, ok := lib.cmds[name]
+	if ok {
+		panic("already registered")
+	}
+	lib.cmds[name] = cmd
+}
+
+func (lib *Lib) Execute(jq *JQShell, name string, args []string) error {
+	lib.mut.Lock()
+	defer lib.mut.Unlock()
+	if name == "help" {
+		lib.help(jq, args)
+		return nil
+	}
+	cmd, ok := lib.cmds[name]
+	if !ok {
+		return fmt.Errorf("%v: unknown command", name)
+	}
+	err := cmd.ExecuteShellCommand(jq, args)
+	if err != nil {
+		return ExecError{append([]string{name}, args...), err}
+	}
+	return nil
 }
 
 var ShellExit = fmt.Errorf("exit")

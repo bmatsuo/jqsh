@@ -45,6 +45,13 @@ func main() {
 
 	// create a shell environment and wait for it to receive EOF or a 'quit'
 	// command.
+	fmt.Println("Welcome to jqsh!")
+	fmt.Println()
+	fmt.Println("To learn more about the environment type \":help\"")
+	fmt.Println()
+	fmt.Println("To learn more about jqsh see the online documentation")
+	fmt.Println("\thttps://github.com/bmatsuo/jqsh")
+	fmt.Println()
 	sh := NewInitShellReader(nil, initcmds)
 	jq := NewJQShell(sh)
 	err := jq.Wait()
@@ -197,7 +204,7 @@ type JQShell struct {
 	inputfn  func() (io.ReadCloser, error)
 	filename string
 	istmp    bool // the filename at path should be deleted when changed
-	lib      map[string]JQShellCommand
+	lib      *Lib
 	sh       ShellReader
 	err      error
 	wg       sync.WaitGroup
@@ -209,22 +216,20 @@ func NewJQShell(sh ShellReader) *JQShell {
 	}
 	st := new(JQStack)
 	jq := &JQShell{
-		Log:   log.New(os.Stderr, "jqsh: ", log.Lshortfile),
+		Log:   log.New(os.Stderr, "jqsh: ", 0),
 		Stack: st,
 		sh:    sh,
 	}
-	jq.lib = map[string]JQShellCommand{
-		"":       nil,
-		"push":   JQShellCommandFunc(cmdPush),
-		"pop":    JQShellCommandFunc(cmdPop),
-		"filter": JQShellCommandFunc(cmdFilter),
-		"script": JQShellCommandFunc(cmdScript),
-		"load":   JQShellCommandFunc(cmdLoad),
-		"exec":   JQShellCommandFunc(cmdExec),
-		"write":  JQShellCommandFunc(cmdWrite),
-		"raw":    JQShellCommandFunc(cmdRaw),
-		"quit":   JQShellCommandFunc(cmdQuit),
-	}
+	jq.lib = Library()
+	jq.lib.Register("push", JQShellCommandFunc(cmdPush))
+	jq.lib.Register("pop", JQShellCommandFunc(cmdPop))
+	jq.lib.Register("filter", JQShellCommandFunc(cmdFilter))
+	jq.lib.Register("script", JQShellCommandFunc(cmdScript))
+	jq.lib.Register("load", JQShellCommandFunc(cmdLoad))
+	jq.lib.Register("exec", JQShellCommandFunc(cmdExec))
+	jq.lib.Register("write", JQShellCommandFunc(cmdWrite))
+	jq.lib.Register("raw", JQShellCommandFunc(cmdRaw))
+	jq.lib.Register("quit", JQShellCommandFunc(cmdQuit))
 	jq.wg.Add(1)
 	go jq.loop()
 	return jq
@@ -336,7 +341,7 @@ func (jq *JQShell) loop() {
 				}
 				if err != nil {
 					jq.Log.Print(err)
-				} else if cmd.cmd[0] != "write" && cmd.cmd[0] != "raw" && cmd.cmd[0] != "filter" && cmd.cmd[0] != "script" {
+				} else if cmd.cmd[0] != "write" && cmd.cmd[0] != "raw" && cmd.cmd[0] != "filter" && cmd.cmd[0] != "script" && cmd.cmd[0] != "help" {
 					// TODO clean this up. (cmdPushInteractive, cmdPeek)
 					err := jq.execute([]string{"write"}, nil)
 					if err != nil {
@@ -391,16 +396,7 @@ func (jq *JQShell) execute(cmd []string, err error) error {
 	}
 	if len(cmd) > 0 {
 		name, args := cmd[0], cmd[1:]
-		shellcmd, ok := jq.lib[name]
-		if !ok {
-			return fmt.Errorf("%s: command unknown", name)
-		}
-		if shellcmd != nil {
-			execerr := shellcmd.ExecuteShellCommand(jq, args)
-			if execerr != nil {
-				return ExecError{cmd, execerr}
-			}
-		}
+		return jq.lib.Execute(jq, name, args)
 	}
 	return nil
 }
