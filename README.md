@@ -33,5 +33,5 @@ The rlwrap program can be used instead to provide line editing and history.
 
 Copyright (c) 2014 Bryan Matsuo
 
-This source code in this repository is distributed under the MIT open source
-license.  A copy of the license agreement can be located in the LICENSE file.
+Jqsh is distributed under the MIT open source license.  A copy of the license
+agreement can be located in the LICENSE file.
