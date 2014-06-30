@@ -6,7 +6,7 @@ An interactive wrapper to the [jq](http://stedolan.github.io/jq/) command line u
 
 Download an archive for your system from the [release
 page](https://github.com/bmatsuo/jqsh/releases) and extract the binary somwhere
-in your path. For example
+in your PATH. For example, "/usr/bin".
 
     sudo tar -C /usr/bin -xvzf jqsh0.1.darwin-amd64.tar.gz
 
