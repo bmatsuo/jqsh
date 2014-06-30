@@ -240,7 +240,7 @@ func cmdPop(jq *JQShell, flags *CmdFlags) error {
 		var err error
 		n, err = strconv.Atoi(args[0])
 		if err != nil {
-			return fmt.Errorf("argument must me an integer")
+			return fmt.Errorf("argument must be an integer")
 		}
 	}
 	if n < 0 {
