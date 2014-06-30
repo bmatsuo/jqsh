@@ -207,7 +207,6 @@ func (jq *JQShell) SetInput(fn func() (io.ReadCloser, error)) {
 func (jq *JQShell) Input() (io.ReadCloser, error) {
 	switch {
 	case jq.filename != "":
-		jq.Log.Println("open", jq.filename)
 		return os.Open(jq.filename)
 	case jq.inputfn != nil:
 		return jq.inputfn()
