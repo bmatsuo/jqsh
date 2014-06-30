@@ -64,6 +64,7 @@ type ShellReader interface {
 type SimpleShellReader struct {
 	r      io.Reader
 	br     *bufio.Reader
+	out    io.Writer
 	prompt string
 }
 
@@ -72,15 +73,34 @@ func NewShellReader(r io.Reader, prompt string) *SimpleShellReader {
 		r = os.Stdin
 	}
 	br := bufio.NewReader(r)
-	return &SimpleShellReader{r, br, prompt}
+	return &SimpleShellReader{r, br, os.Stdout, prompt}
+}
+
+func (s *SimpleShellReader) SetOutput(w io.Writer) {
+	s.out = w
+}
+
+func (s *SimpleShellReader) print(v ...interface{}) {
+	if s.out != nil {
+		fmt.Fprint(s.out, v...)
+	}
+}
+
+func (s *SimpleShellReader) println(v ...interface{}) {
+	if s.out != nil {
+		fmt.Fprintln(s.out, v...)
+	}
 }
 
 func (s *SimpleShellReader) ReadCommand() (cmd []string, eof bool, err error) {
-	fmt.Print(s.prompt)
+	s.print(s.prompt)
 	bs, err := s.br.ReadBytes('\n')
 	eof = err == io.EOF
+	if eof {
+		s.println()
+	}
 	if err != nil {
-		if err == io.EOF && len(bs) > 0 {
+		if eof && len(bs) > 0 {
 			// this is ok
 		} else {
 			return nil, eof, err

@@ -2,6 +2,7 @@ package main
 
 import (
 	"io"
+	"io/ioutil"
 	"reflect"
 	"strings"
 	"testing"
@@ -15,6 +16,7 @@ func StringShellReader(lines string) *SimpleShellReader {
 
 func TestShellReaderReadCommand_eof(t *testing.T) {
 	sh := StringShellReader("")
+	sh.SetOutput(ioutil.Discard)
 	_, eof, err := sh.ReadCommand()
 	if err != io.EOF {
 		t.Fatal("non-eof error returned")
@@ -24,6 +26,7 @@ func TestShellReaderReadCommand_eof(t *testing.T) {
 	}
 
 	sh = StringShellReader(":hello shell")
+	sh.SetOutput(ioutil.Discard)
 	_, eof, err = sh.ReadCommand()
 	if err != nil {
 		t.Fatal("error returned")
@@ -35,6 +38,7 @@ func TestShellReaderReadCommand_eof(t *testing.T) {
 
 func TestShellReaderReadCommand_multi(t *testing.T) {
 	sh := StringShellReader(":hello\n:shell\n")
+	sh.SetOutput(ioutil.Discard)
 	cmd, eof, err := sh.ReadCommand()
 	if err != nil {
 		t.Fatalf("error returned")
@@ -81,7 +85,9 @@ func TestShellReaderReadCommand_single(t *testing.T) {
 		{".items | .[]", cmd("push", ".items | .[]")},
 		{"\n", cmd("write")},
 	} {
-		cmd, _, err := StringShellReader(test.str).ReadCommand()
+		sh := StringShellReader(test.str)
+		sh.SetOutput(ioutil.Discard)
+		cmd, _, err := sh.ReadCommand()
 		if err != nil {
 			t.Errorf("command %d (%q) %v", i, test.str, err)
 			continue
