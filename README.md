@@ -21,3 +21,10 @@ version of jqsh using `go get`.
 
 Reference documentation can be found on
 [godoc.org](http://godoc.org/github.com/bmatsuo/jqsh).
+
+##Readline
+
+Jqsh does not have builtin support for readline or other fancy line editing.
+The rlwrap program can be used instead to provide line editing and history.
+
+    rlwrap -A -N jqsh
