@@ -8,7 +8,7 @@ Download an archive for your system from the [release
 page](https://github.com/bmatsuo/jqsh/releases) and extract the binary somwhere
 in your PATH. For example, "/usr/bin".
 
-    sudo tar -C /usr/bin -xvzf jqsh0.1.darwin-amd64.tar.gz
+    sudo tar -C /usr/bin -xvzf jqsh0.2.darwin-amd64.tar.gz
 
 Or, if Go is installed on your system, you can install the unstable HEAD using
 `go get`.
