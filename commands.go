@@ -90,12 +90,22 @@ func cmdWrite(jq *JQShell, args []string) error {
 		default:
 			break
 		}
-		_, _, err = Execute(w, os.Stderr, r, "", jq.Stack)
+		pageerr := make(chan error, 1)
+		stop := make(chan struct{})
+		go func() {
+			err := <-errch
+			close(stop)
+			if err != nil {
+				pageerr <- err
+			}
+			close(pageerr)
+		}()
+		_, _, err = Execute(w, os.Stderr, r, stop, "", jq.Stack)
 		w.Close()
-		pageErr := <-errch
 		if err != nil {
 			return ExecError{[]string{"jq"}, err}
 		}
+		pageErr := <-pageerr
 		if pageErr != nil {
 			jq.log("pager: ", pageErr)
 		}
@@ -105,7 +115,7 @@ func cmdWrite(jq *JQShell, args []string) error {
 }
 
 func cmdExec(jq *JQShell, args []string) error {
-	flags := Flags("exec", args)
+	flags := Flags("exec", append([]string{"exec"}, args...))
 	ignore := flags.Bool("ignore", false, "ignore process exit status")
 	filename := flags.String("o", "", "a json file produced by the command")
 	pfilename := flags.String("O", "", "like -O but the file will not be deleted by jqsh")
@@ -114,6 +124,7 @@ func cmdExec(jq *JQShell, args []string) error {
 	if err != nil {
 		return err
 	}
+	args = flags.Args()
 
 	var out io.Writer
 	var path string
@@ -128,7 +139,7 @@ func cmdExec(jq *JQShell, args []string) error {
 		path = *pfilename
 	}
 	if *nocache {
-		jq.SetInput(_cmdExecInput(*ignore, args[0], args[1:]...))
+		jq.SetInput(_cmdExecInput(jq, args[0], args[1:]...))
 		return nil
 	}
 	if path == "" {
@@ -144,23 +155,20 @@ func cmdExec(jq *JQShell, args []string) error {
 		out = os.Stdout
 	}
 
-	args = flags.Args()
 	if err != nil {
 		return err
 	}
 	if len(args) == 0 {
 		return fmt.Errorf("missing command")
 	}
-	cmd := exec.Command(args[0], args[1:]...)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = out
-	cmd.Stderr = os.Stderr
-
-	err = cmd.Run()
+	stdout, err := _cmdExecInput(jq, args[0], args[1:]...)()
 	if err != nil && !*ignore {
-		if istmp {
-			os.Remove(path)
-		}
+		os.Remove(path)
+		return err
+	}
+	_, err = io.Copy(out, stdout)
+	if err != nil {
+		os.Remove(path)
 		return err
 	}
 
@@ -169,10 +177,10 @@ func cmdExec(jq *JQShell, args []string) error {
 	return nil
 }
 
-func _cmdExecInput(ignore bool, name string, args ...string) func() (io.ReadCloser, error) {
+func _cmdExecInput(jq *JQShell, name string, args ...string) func() (io.ReadCloser, error) {
 	return func() (io.ReadCloser, error) {
 		cmd := exec.Command(args[0], args[1:]...)
-		cmd.Stdin = os.Stdin
+		//cmd.Stdin = os.Stdin
 		cmd.Stderr = os.Stderr
 		stdout, err := cmd.StdoutPipe()
 		if err != nil {
@@ -180,10 +188,18 @@ func _cmdExecInput(ignore bool, name string, args ...string) func() (io.ReadClos
 		}
 
 		err = cmd.Start()
-		if err != nil && !ignore {
+		if err != nil {
 			stdout.Close()
 			return nil, err
 		}
+		go func() {
+			err := cmd.Wait()
+			if err != nil {
+				jq.Log.Printf("%v: %v", name, err)
+			} else {
+				jq.Log.Printf("%v: exit status 0", name)
+			}
+		}()
 		return stdout, nil
 	}
 }

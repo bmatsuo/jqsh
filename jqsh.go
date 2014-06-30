@@ -89,6 +89,8 @@ func Page(pager []string) (io.WriteCloser, <-chan error) {
 	}
 	go func() {
 		err := cmd.Run()
+		log.Println("!!!!!!")
+		stdin.Close()
 		if err != nil {
 			errch <- err
 		}
@@ -98,21 +100,38 @@ func Page(pager []string) (io.WriteCloser, <-chan error) {
 	return stdin, errch
 }
 
-func Execute(out, err io.Writer, in io.Reader, jq string, s *JQStack) (int64, int64, error) {
+func Execute(outw, errw io.Writer, in io.Reader, stop <-chan struct{}, jq string, s *JQStack) (int64, int64, error) {
 	if jq == "" {
 		jq = "jq"
 	}
-	outcounter := &writeCounter{0, out}
-	errcounter := &writeCounter{0, err}
+	outcounter := &writeCounter{0, outw}
+	errcounter := &writeCounter{0, errw}
 	filter := strings.Join(s.JQFilter(), " | ")
 	cmd := exec.Command(jq, "-C", filter) // TODO test if stdout is a terminal
 	cmd.Stdin = in
 	cmd.Stdout = outcounter
 	cmd.Stderr = errcounter
-	e := cmd.Run()
+	done := make(chan error, 1)
+	err := cmd.Start()
+	if err != nil {
+		return 0, 0, err
+	}
+	go func() {
+		done <- cmd.Wait()
+		close(done)
+	}()
+	select {
+	case <-stop:
+		err := cmd.Process.Kill()
+		if err != nil {
+			log.Println("unable to kill process %d", cmd.Process.Pid)
+		}
+	case err = <-done:
+		break
+	}
 	nout := outcounter.n
 	nerr := errcounter.n
-	return nout, nerr, e
+	return nout, nerr, err
 }
 
 type InvalidCommandError struct {
@@ -240,28 +259,21 @@ func NewJQShell(sh ShellReader) *JQShell {
 }
 
 func (jq *JQShell) SetInputFile(path string, istmp bool) {
+	jq.ClearInput()
 	jq.inputfn = nil
 	jq.filename = path
 	jq.istmp = istmp
 }
 
 func (jq *JQShell) SetInput(fn func() (io.ReadCloser, error)) {
-	if jq.filename != "" {
-		if jq.istmp {
-			err := os.Remove(jq.filename)
-			if err != nil {
-				jq.Log.Printf("removing temporary file: %v", err)
-			}
-		}
-		jq.filename = ""
-		jq.istmp = false
-	}
+	jq.ClearInput()
 	jq.inputfn = fn
 }
 
 func (jq *JQShell) Input() (io.ReadCloser, error) {
 	switch {
 	case jq.filename != "":
+		jq.Log.Println("open", jq.filename)
 		return os.Open(jq.filename)
 	case jq.inputfn != nil:
 		return jq.inputfn()
