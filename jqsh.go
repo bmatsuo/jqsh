@@ -32,7 +32,7 @@ That is all of the syntax in jqsh.
 
 The filter stack
 
-The core concept in jqsh in a stack of jq filters.  Filters create a larger
+The core concept in jqsh is a stack of jq "filters".  Filters create a larger
 filter when joined with pipes "|".  And maintaining a stack of filters allows
 exploritory querying of JSON structures.
 
@@ -47,6 +47,10 @@ the stack.  Multiple items can be popped off the stack by passing "pop" an
 integer argument (the number of items to pop).
 
 	> :pop 3
+
+Read more about jq filters at the tool's online manual.
+
+	http://stedolan.github.io/jq/manual/
 
 Command reference
 
