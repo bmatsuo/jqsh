@@ -1,3 +1,6 @@
+// shell.go
+// a collection of shell and tty utilities
+
 package main
 
 import (
