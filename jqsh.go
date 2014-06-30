@@ -50,7 +50,7 @@ integer argument (the number of items to pop).
 
 Read more about jq filters at the tool's online manual.
 
-	http://stedolan.github.io/jq/manual/
+	http://stedolan.github.io/jq/manual/#Basicfilters
 
 Command reference
 
