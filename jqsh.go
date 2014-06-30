@@ -69,10 +69,8 @@ import (
 	"io"
 	"log"
 	"os"
-	"os/exec"
 	"runtime"
 	"sync"
-	"sync/atomic"
 )
 
 var ErrStackEmpty = fmt.Errorf("the stack is empty")
@@ -145,56 +143,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-}
-
-// Page returns an io.Writer whose input will be written to the pager program.
-// The returned channel should be checked for an error using select before the
-// writer is used.
-//	w, errch := Page("less")
-//	select {
-//	case err := <-errch:
-//		return err
-//	default:
-//		w.Write([]byte("boom"))
-//	}
-func Page(pager []string) (io.WriteCloser, <-chan error) {
-	errch := make(chan error, 1)
-	if len(pager) == 0 {
-		pager = []string{"more", "-r"}
-	}
-	pagercmd := pager[0]
-	pagerargs := pager[1:]
-	cmd := exec.Command(pagercmd, pagerargs...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		errch <- err
-		return nil, errch
-	}
-	go func() {
-		err := cmd.Run()
-		stdin.Close()
-		if err != nil {
-			errch <- err
-		}
-		close(errch)
-		fmt.Print("\033[0m")
-	}()
-	return stdin, errch
-}
-
-type writeCounter struct {
-	n int64
-	w io.Writer
-}
-
-func (w *writeCounter) Write(bs []byte) (int, error) {
-	n, err := w.w.Write(bs)
-	if n > 0 {
-		atomic.AddInt64(&w.n, int64(n))
-	}
-	return n, err
 }
 
 type InvalidCommandError struct {
