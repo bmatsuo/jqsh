@@ -62,25 +62,32 @@ func (w *writeCounter) Write(bs []byte) (int, error) {
 	return n, err
 }
 
+// BUG: this is not an idiomatic interface.
 type ShellReader interface {
+	// ReadCommand reads a command from input and returns it.  ReadCommand
+	// returns io.EOF there is no command to be processed.  ReadCommand returns
+	// a true value when either there was no command to process or the command
+	// was terminated without a newline. If true ReadCommand should not be
+	// called again to avoid reprompting the user.
 	ReadCommand() (cmd []string, eof bool, err error)
 }
 
 type SimpleShellReader struct {
-	r  io.Reader
-	br *bufio.Reader
+	r      io.Reader
+	br     *bufio.Reader
+	prompt string
 }
 
-func NewShellReader(r io.Reader) *SimpleShellReader {
+func NewShellReader(r io.Reader, prompt string) *SimpleShellReader {
 	if r == nil {
 		r = os.Stdin
 	}
 	br := bufio.NewReader(r)
-	return &SimpleShellReader{r, br}
+	return &SimpleShellReader{r, br, prompt}
 }
 
 func (s *SimpleShellReader) ReadCommand() (cmd []string, eof bool, err error) {
-	fmt.Print("> ")
+	fmt.Print(s.prompt)
 	bs, err := s.br.ReadBytes('\n')
 	eof = err == io.EOF
 	if err != nil {
@@ -126,8 +133,8 @@ type InitShellReader struct {
 	r    *SimpleShellReader
 }
 
-func NewInitShellReader(r io.Reader, initcmds [][]string) *InitShellReader {
-	return &InitShellReader{0, initcmds, NewShellReader(r)}
+func NewInitShellReader(r io.Reader, prompt string, initcmds [][]string) *InitShellReader {
+	return &InitShellReader{0, initcmds, NewShellReader(r, prompt)}
 }
 
 func (sh *InitShellReader) ReadCommand() ([]string, bool, error) {

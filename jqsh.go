@@ -137,7 +137,7 @@ func main() {
 	fmt.Println()
 	fmt.Println("\thttps://github.com/bmatsuo/jqsh")
 	fmt.Println()
-	sh := NewInitShellReader(nil, initcmds)
+	sh := NewInitShellReader(nil, "> ", initcmds)
 	jq := NewJQShell(jqbin, sh)
 	err = jq.Wait()
 	if err != nil {
@@ -168,7 +168,7 @@ type JQShell struct {
 
 func NewJQShell(bin string, sh ShellReader) *JQShell {
 	if sh == nil {
-		sh = NewShellReader(nil)
+		sh = NewShellReader(nil, "> ")
 	}
 	st := new(JQStack)
 	jq := &JQShell{
