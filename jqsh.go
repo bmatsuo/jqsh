@@ -73,6 +73,7 @@ import (
 	"sync"
 )
 
+var ErrNoInput = fmt.Errorf("no input")
 var ErrStackEmpty = fmt.Errorf("the stack is empty")
 
 func main() {
@@ -212,7 +213,7 @@ func (jq *JQShell) Input() (io.ReadCloser, error) {
 	case jq.inputfn != nil:
 		return jq.inputfn()
 	default:
-		return nil, fmt.Errorf("no input")
+		return nil, ErrNoInput
 	}
 }
 

@@ -350,12 +350,15 @@ func cmdWrite_file(jq *JQShell, filename string) error {
 }
 
 func cmdWrite_io(jq *JQShell, w io.WriteCloser, color bool, stop chan struct{}) (int64, int64, error) {
+	defer w.Close()
 	r, err := jq.Input()
+	if err == ErrNoInput {
+		return 0, 0, nil
+	}
 	if err != nil {
 		return 0, 0, err
 	}
 	defer r.Close()
-	defer w.Close()
 	nout, nerr, err := Execute(w, os.Stderr, r, stop, jq.bin, color, jq.Stack)
 	if err != nil {
 		return nout, nerr, ExecError{[]string{"jq"}, err}
