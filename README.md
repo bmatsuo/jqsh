@@ -35,8 +35,9 @@ Reference documentation is on
 
 ##Readline
 
-Jqsh does not have builtin support for readline or other fancy line editing.
-Use [rlwrap](http://utopia.knoware.nl/~hlub/rlwrap/#rlwrap) for now.
+Jqsh lacks support for line editing and history (readline).  The
+[rlwrap](http://utopia.knoware.nl/~hlub/rlwrap/#rlwrap) helps with this if
+desired.
 
     $ rlwrap -A -N jqsh
 
