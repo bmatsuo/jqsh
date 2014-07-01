@@ -136,7 +136,7 @@ func main() {
 	fmt.Println()
 	fmt.Println("To learn more about jqsh see the online documentation")
 	fmt.Println()
-	fmt.Println("\thttps://github.com/bmatsuo/jqsh")
+	fmt.Println("\thttps://github.com/bmatsuo/jqsh#getting-started")
 	fmt.Println()
 	sh := NewInitShellReader(nil, "> ", initcmds)
 	jq := NewJQShell(jqbin, sh)
