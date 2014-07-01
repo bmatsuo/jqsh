@@ -75,39 +75,6 @@ func TestCheckJQVersion(t *testing.T) {
 	}
 }
 
-func TestParseJQVersion(t *testing.T) {
-	for _, test := range []struct {
-		in       string
-		s        string
-		maj, min int
-		suf      string
-		err      bool
-	}{
-		{"jq-1.4\n", "jq-1.4", 1, 4, "", false},
-		{"jq version 1.3\n", "jq version 1.3", 1, 3, "", false},
-	} {
-		s, maj, min, suf, err := ParseJQVersion(test.in)
-		if s != test.s {
-			t.Errorf("%q unexpected version string: %q", test.in, s)
-		}
-		if maj != test.maj {
-			t.Errorf("%q unexpected major version: %q", test.in, maj)
-		}
-		if min != test.min {
-			t.Errorf("%q unexpected minor version: %q", test.in, min)
-		}
-		if suf != test.suf {
-			t.Errorf("%q unexpected version suffix: %q", test.in, suf)
-		}
-		if !test.err && err != nil {
-			t.Errorf("%q unexpected error: %v", test.in, err)
-		}
-		if test.err && err == nil {
-			t.Errorf("%q expected an error", test.in, err)
-		}
-	}
-}
-
 func TestJoinFilter(t *testing.T) {
 	filter := JoinFilter(MockFilter{"hello", "world"})
 	if filter != "hello | world" {
