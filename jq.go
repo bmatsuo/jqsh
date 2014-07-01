@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"os/exec"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"unicode"
@@ -51,22 +52,10 @@ func CheckJQVersion(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	lex := lexer.New(scanJQVersion, string(bs))
-	var items []*lexer.Item
-	for {
-		item := lex.Next()
-		if item.Type == lexer.ItemError {
-			return "", fmt.Errorf("%s", item.Value)
-		}
-		if item.Type == lexer.ItemEOF {
-			break
-		}
-		items = append(items, item)
+	vstr, _, _, _, err := ParseJQVersion(string(bs))
+	if err != nil {
+		return "", err
 	}
-	if len(items) < 2 {
-		panic("expect at least two tokens")
-	}
-	vstr := string(bytes.TrimFunc(bs, unicode.IsSpace))
 	return vstr, nil
 }
 
@@ -75,6 +64,52 @@ const (
 	jqVersionMinor
 	jqVersionSuffix
 )
+
+func ParseJQVersion(vstr string) (s string, major, minor int, suffix string, err error) {
+	vstr = strings.TrimFunc(vstr, unicode.IsSpace) // BUG this breaks error position information (currently unused)
+	lex := lexer.New(scanJQVersion, vstr)
+	var items []*lexer.Item
+	for {
+		item := lex.Next()
+		if item.Type == lexer.ItemError {
+			return "", 0, 0, "", fmt.Errorf("%s", item.Value)
+		}
+		if item.Type == lexer.ItemEOF {
+			break
+		}
+		items = append(items, item)
+	}
+	s = vstr
+	if len(items) < 2 {
+		panic("expect at least two tokens")
+	}
+	if items[0].Type != jqVersionMajor {
+		err = fmt.Errorf("unexpected token %v", items[0])
+		return
+	}
+	major, err = strconv.Atoi(items[0].String())
+	if err != nil {
+		err = fmt.Errorf("invalid major version: %v", err)
+		return
+	}
+	if items[1].Type != jqVersionMinor {
+		err = fmt.Errorf("unexpected token %v", items[0])
+		return
+	}
+	minor, err = strconv.Atoi(items[1].String())
+	if err != nil {
+		err = fmt.Errorf("invalid minor version: %v", err)
+		return
+	}
+	if len(items) > 2 {
+		if items[2].Type != jqVersionSuffix {
+			err = fmt.Errorf("unexpected token: %q (%d)", items[2], items[2].Type)
+			return
+		}
+		suffix = items[2].String()
+	}
+	return
+}
 
 func scanJQVersion(lex *lexer.Lexer) lexer.StateFn {
 	// prefix "jq-"
@@ -85,7 +120,33 @@ func scanJQVersion(lex *lexer.Lexer) lexer.StateFn {
 		return lex.Errorf("not a jq version")
 	}
 	if !lex.Accept("-") {
-		return lex.Errorf("not a jq version")
+		if !lex.Accept(" ") {
+			return lex.Errorf("not a jq version")
+		}
+		if !lex.Accept("v") {
+			return lex.Errorf("not a jq version")
+		}
+		if !lex.Accept("e") {
+			return lex.Errorf("not a jq version")
+		}
+		if !lex.Accept("r") {
+			return lex.Errorf("not a jq version")
+		}
+		if !lex.Accept("s") {
+			return lex.Errorf("not a jq version")
+		}
+		if !lex.Accept("i") {
+			return lex.Errorf("not a jq version")
+		}
+		if !lex.Accept("o") {
+			return lex.Errorf("not a jq version")
+		}
+		if !lex.Accept("n") {
+			return lex.Errorf("not a jq version")
+		}
+		if !lex.Accept(" ") {
+			return lex.Errorf("not a jq version")
+		}
 	}
 	lex.Ignore()
 
