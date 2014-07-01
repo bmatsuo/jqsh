@@ -35,9 +35,9 @@ Reference documentation is on
 
 ##Readline
 
-Jqsh lacks support for line editing and history (readline).  The
-[rlwrap](http://utopia.knoware.nl/~hlub/rlwrap/#rlwrap) helps with this if
-desired.
+Jqsh lacks advanced editing and history support.
+[Rlwrap](http://utopia.knoware.nl/~hlub/rlwrap/#rlwrap) can help until support
+arrives.
 
     $ rlwrap -A -N jqsh
 
