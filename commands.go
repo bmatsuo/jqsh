@@ -245,6 +245,53 @@ func cmdLoad(jq *JQShell, flags *CmdFlags) error {
 	return nil
 }
 
+func cmdPipeShell(jq *JQShell, flags *CmdFlags) error {
+	flags.ArgSet("command")
+	color := flags.Bool("-color", false, "pass colorized json to command")
+	err := flags.Parse(nil)
+	if IsHelp(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	args := flags.Args()
+	if len(args) == 0 {
+		return fmt.Errorf("missing command")
+	}
+	shell := os.Getenv("SHELL")
+	if shell == "" {
+		shell = "bash"
+	}
+	shcmd := []string{shell, "-c", args[0]}
+	cmd := exec.Command(shell, shcmd[1:]...)
+	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return fmt.Errorf("creating pipe: %v", err)
+	}
+	err = cmd.Start()
+	waiterr := make(chan error, 1)
+	go func() {
+		waiterr <- cmd.Wait()
+		stdin.Close()
+	}()
+	if err != nil {
+		return ExecError{shcmd, err}
+	}
+	_, _, err = cmdWrite_io(jq, stdin, *color, nil)
+	if err != nil {
+		<-waiterr
+		return err
+	}
+	err = <-waiterr
+	if err != nil {
+		return ExecError{shcmd, err}
+	}
+	return nil
+}
+
 func cmdWrite(jq *JQShell, flags *CmdFlags) error {
 	flags.ArgSet("[filename]")
 	err := flags.Parse(nil)
@@ -256,40 +303,64 @@ func cmdWrite(jq *JQShell, flags *CmdFlags) error {
 	}
 	args := flags.Args()
 	if len(args) == 0 {
-		r, err := jq.Input()
-		if err != nil {
-			return err
-		}
-		defer r.Close()
-		w, errch := Page(nil)
-		select {
-		case err := <-errch:
-			return err
-		default:
-			break
-		}
-		pageerr := make(chan error, 1)
-		stop := make(chan struct{})
-		go func() {
-			err := <-errch
-			close(stop)
-			if err != nil {
-				pageerr <- err
-			}
-			close(pageerr)
-		}()
-		_, _, err = Execute(w, os.Stderr, r, stop, jq.bin, jq.Stack)
-		w.Close()
-		if err != nil {
-			return ExecError{[]string{"jq"}, err}
-		}
-		pageErr := <-pageerr
-		if pageErr != nil {
-			jq.log("pager: ", pageErr)
-		}
-		return nil
+		return cmdWrite_page(jq)
 	}
-	return fmt.Errorf("file output not allowed")
+	return cmdWrite_file(jq, args[0])
+}
+
+func cmdWrite_page(jq *JQShell) error {
+	w, errch := Page(nil)
+	select {
+	case err := <-errch:
+		return err
+	default:
+		break
+	}
+	pageerr := make(chan error, 1)
+	stop := make(chan struct{})
+	go func() {
+		err := <-errch
+		close(stop)
+		if err != nil {
+			pageerr <- err
+		}
+		close(pageerr)
+	}()
+	_, _, err := cmdWrite_io(jq, w, true, stop)
+	if err != nil {
+		return err
+	}
+	pageErr := <-pageerr
+	if pageErr != nil {
+		jq.log("pager: ", pageErr)
+	}
+	return nil
+}
+
+func cmdWrite_file(jq *JQShell, filename string) error {
+	f, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	nout, _, err := cmdWrite_io(jq, f, false, nil)
+	if err == nil {
+		jq.Log.Printf("%d bytes written to %q", nout, filename)
+	}
+	return err
+}
+
+func cmdWrite_io(jq *JQShell, w io.WriteCloser, color bool, stop chan struct{}) (int64, int64, error) {
+	r, err := jq.Input()
+	if err != nil {
+		return 0, 0, err
+	}
+	defer r.Close()
+	defer w.Close()
+	nout, nerr, err := Execute(w, os.Stderr, r, stop, jq.bin, color, jq.Stack)
+	if err != nil {
+		return nout, nerr, ExecError{[]string{"jq"}, err}
+	}
+	return nout, nerr, err
 }
 
 func cmdRaw(jq *JQShell, flags *CmdFlags) error {

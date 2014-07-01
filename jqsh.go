@@ -184,6 +184,7 @@ func NewJQShell(bin string, sh ShellReader) *JQShell {
 	jq.lib.Register("script", JQShellCommandFunc(cmdScript))
 	jq.lib.Register("load", JQShellCommandFunc(cmdLoad))
 	jq.lib.Register("exec", JQShellCommandFunc(cmdExec))
+	jq.lib.Register("sh", JQShellCommandFunc(cmdPipeShell))
 	jq.lib.Register("write", JQShellCommandFunc(cmdWrite))
 	jq.lib.Register("raw", JQShellCommandFunc(cmdRaw))
 	jq.lib.Register("quit", JQShellCommandFunc(cmdQuit))
@@ -299,7 +300,7 @@ func (jq *JQShell) loop() {
 					jq.Log.Print(err)
 				} else if len(cmd.cmd) == 0 {
 					jq.Log.Println("empty command")
-				} else if cmd.cmd[0] != "write" && cmd.cmd[0] != "raw" && cmd.cmd[0] != "filter" && cmd.cmd[0] != "script" && cmd.cmd[0] != "help" {
+				} else if cmd.cmd[0] != "write" && cmd.cmd[0] != "raw" && cmd.cmd[0] != "filter" && cmd.cmd[0] != "script" && cmd.cmd[0] != "help" && cmd.cmd[0] != "sh" {
 					// TODO clean this up. (cmdPushInteractive, cmdPeek)
 					err := jq.execute([]string{"write"}, nil)
 					if err != nil {

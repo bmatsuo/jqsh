@@ -137,13 +137,18 @@ func (w *writeCounter) Write(bs []byte) (int, error) {
 	return n, err
 }
 
-func Execute(outw, errw io.Writer, in io.Reader, stop <-chan struct{}, jq string, s *JQStack) (int64, int64, error) {
+func Execute(outw, errw io.Writer, in io.Reader, stop <-chan struct{}, jq string, color bool, s *JQStack) (int64, int64, error) {
 	if jq == "" {
 		jq = "jq"
 	}
 	outcounter := &writeCounter{0, outw}
 	errcounter := &writeCounter{0, errw}
-	cmd := exec.Command(jq, "-C", JoinFilter(s)) // TODO test if stdout is a terminal
+	var args []string
+	if color {
+		args = append(args, "--color-output")
+	}
+	args = append(args, JoinFilter(s))
+	cmd := exec.Command(jq, args...)
 	cmd.Stdin = in
 	cmd.Stdout = outcounter
 	cmd.Stderr = errcounter
