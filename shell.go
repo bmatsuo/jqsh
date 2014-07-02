@@ -27,7 +27,7 @@ import (
 func Page(pager []string) (io.WriteCloser, <-chan error) {
 	errch := make(chan error, 1)
 	if len(pager) == 0 {
-		pager = []string{"more", "-r"}
+		pager = []string{"less", "-X", "-r"}
 	}
 	pagercmd := pager[0]
 	pagerargs := pager[1:]
