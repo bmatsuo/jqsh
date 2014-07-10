@@ -109,7 +109,20 @@ func (s *SimpleShellReader) ReadCommand() (cmd []string, eof bool, err error) {
 	bs = bytes.TrimFunc(bs, unicode.IsSpace)
 
 	if len(bs) == 0 {
-		return []string{"write"}, eof, nil
+		if eof {
+			return nil, eof, nil
+		}
+		return s.ReadCommand()
+	} else if bytes.Equal(bs, []byte("..")) {
+		cmd := []string{"pop"}
+		return cmd, eof, nil
+	} else if bytes.Equal(bs, []byte{'.'}) {
+		cmd := []string{"write"}
+		return cmd, eof, nil
+	} else if bs[0] == '?' {
+		str := string(bs[1:])
+		cmd := []string{"peek", str}
+		return cmd, eof, nil
 	} else if bs[0] != ':' {
 		str := string(bs)
 		cmd := []string{"push", str}

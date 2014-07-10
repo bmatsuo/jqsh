@@ -167,6 +167,36 @@ func cmdFilter(jq *JQShell, flags *CmdFlags) error {
 	return nil
 }
 
+func cmdPeek(jq *JQShell, flags *CmdFlags) error {
+	flags.ArgSet("filter", "...")
+	err := flags.Parse(nil)
+	if IsHelp(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	filters := flags.Args()
+	for _, f := range filters {
+		if f == "" {
+			continue
+		}
+		jq.Stack.Push(FilterString(f))
+	}
+
+	err = cmdWrite(jq, Flags("write", nil))
+
+	for _ = range make([]struct{}, len(filters)) {
+		jq.Stack.Pop()
+	}
+
+	if err != nil {
+		return fmt.Errorf("invalid filter: %v", err)
+	}
+
+	return nil
+}
+
 func cmdPush(jq *JQShell, flags *CmdFlags) error {
 	flags.ArgSet("filter", "...")
 	err := flags.Parse(nil)
