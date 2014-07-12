@@ -34,21 +34,30 @@ func Page(pager []string) (io.WriteCloser, <-chan error) {
 	cmd := exec.Command(pagercmd, pagerargs...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	stdin, err := cmd.StdinPipe()
+	stdinr, stdinw, err := os.Pipe()
 	if err != nil {
 		errch <- err
 		return nil, errch
 	}
+	cmd.Stdin = stdinr
+	err = cmd.Start()
+	if err != nil {
+		errch <- err
+		stdinw.Close()
+		stdinr.Close()
+		close(errch)
+		return nil, errch
+	}
 	go func() {
-		err := cmd.Run()
-		stdin.Close()
+		err := cmd.Wait()
+		stdinr.Close()
 		if err != nil {
 			errch <- err
 		}
 		close(errch)
 		fmt.Print("\033[0m")
 	}()
-	return stdin, errch
+	return stdinw, errch
 }
 
 // BUG: this is not an idiomatic interface.
