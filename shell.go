@@ -49,13 +49,18 @@ func Page(pager []string) (io.WriteCloser, <-chan error) {
 		return nil, errch
 	}
 	go func() {
+		// wait for the pager and terminate any color mode the terminal happens
+		// to be in when the program closes.
+		//
+		// BUG platform dependent escape code.
 		err := cmd.Wait()
+		fmt.Print("\033[0m")
+
 		stdinr.Close()
 		if err != nil {
 			errch <- err
 		}
 		close(errch)
-		fmt.Print("\033[0m")
 	}()
 	return stdinw, errch
 }
