@@ -34,8 +34,8 @@ Read more about jq filters at the tool's online manual.
 Shell syntax
 
 The current shell syntax is rudimentory but it suffices.  Lines prefixed with a
-colon ':' commands, other lines are shorthand for specific commands.  Following
-is a list of all shell syntax in jqsh.
+colon ':' are commands, other lines are shorthand for specific commands.
+Following is a list of all shell syntax in jqsh.
 
 	:<cmd> <arg1> <arg2> ...    execute cmd with the given arguments
 	:<cmd> ... +<argN>          execute cmd with an argument containing spaces (argN)
