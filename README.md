@@ -62,11 +62,13 @@ experience undesirable behavior.
 
 ##Contributing
 
-Everyone is encourage to make suggestions regarding how they think jqsh could
-be a better utility.  But I'd like to keep development fairly regulated in
-these early stages.  Do not open pull requests without first creating an issue
-and getting the OK to work on it.  I will review/accept pull requests for
-things marked "help wanted", or things I personally hand off to people.
+Everyone is encouraged to [make
+suggestions](https://github.com/bmatsuo/jqsh/issues/new) regarding how they
+think jqsh could be a better utility.  But I'd like to keep development fairly
+regulated in these early stages.  Do not open pull requests without first
+opening an issue and getting the OK to work on it.  I will review/accept pull
+requests for things marked "help wanted", or things I personally hand off to
+people.
 
 Once work on something has started it will be assigned to someone.  If you want
 to write a patch for something comment in the issue before you start and you
