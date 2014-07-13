@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"io"
@@ -12,6 +13,7 @@ import (
 	"sync"
 	"syscall"
 	"text/tabwriter"
+	"time"
 	"unicode/utf8"
 )
 
@@ -212,6 +214,32 @@ func cmdPush(jq *JQShell, flags *CmdFlags) error {
 			continue
 		}
 		jq.Stack.Push(FilterString(arg))
+	}
+	err = testFilter(jq)
+	if err != nil {
+		jq.Stack.Pop()
+	}
+	return err
+}
+
+var testFilterTimeout = 10 * time.Second
+
+func testFilter(jq *JQShell) error {
+	var empty bytes.Buffer
+	var errbuf bytes.Buffer
+	var err error
+	stop := make(chan struct{})
+	done := make(chan struct{})
+	go func() {
+		_, _, err = Execute(ioutil.Discard, &errbuf, &empty, stop, jq.bin, false, jq.Stack)
+		close(done)
+	}()
+	select {
+	case <-done:
+		return fmt.Errorf("%s (%v)", errbuf.Bytes(), err)
+	case <-time.After(testFilterTimeout):
+		close(stop)
+		return fmt.Errorf("jq timed out processing the filter")
 	}
 	return nil
 }

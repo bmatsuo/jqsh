@@ -318,17 +318,6 @@ func (jq *JQShell) loop() {
 					err := jq.execute([]string{"write"}, nil)
 					if err != nil {
 						jq.Log.Print(err)
-						if cmd.cmd[0] == "push" {
-							npush := len(cmd.cmd) - 1
-							if npush == 0 {
-								npush = 1
-							}
-							jq.Log.Print("reverting push operation")
-							err := jq.execute([]string{"pop", fmt.Sprint(npush)}, nil)
-							if err != nil {
-								jq.Log.Print(err)
-							}
-						}
 					}
 				}
 				ready <- struct{}{}
