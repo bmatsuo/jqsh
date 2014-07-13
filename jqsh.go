@@ -51,7 +51,7 @@ to the jqsh filter stack. Filters can be removed from the filter stack with ":po
 	> :pop
 
 
-	:<cmd> <arg1> <arg2> ...	execute cmd with the given arguments
+	:<cmd> <arg1> <arg2> ...    execute cmd with the given arguments
 	:<cmd> ... +<argN>          execute cmd with an argument containing spaces (argN)
 	.                           shorthand for ":write"
 	..                          shorthand for ":pop"
