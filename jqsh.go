@@ -55,13 +55,11 @@ to the jqsh filter stack. Filters can be removed from the filter stack with ":po
 	:<cmd> ... +<argN>              execute cmd with an argument containing spaces (argN)
 	.                               shorthand for ":write"
 	..                              shorthand for ":pop"
-	?<filter>                       shorthand for ":peek <filter>"
-	<filter>                        shorthand for ":push <filter>"
+	?<filter>                       shorthand for ":peek +<filter>"
+	<filter>                        shorthand for ":push +<filter>"
 
-Note that "." is a valid jq filter but in jqsh it lacks meaning in the filter
-stack.  So instead of intepreting it as a filter it is a shorthand for
-":write".  Regardless the filter "." can be pushed on the stack by explicity
-invoking ":push".
+Note that "." is a valid jq filter but pushing it on the filter stack lacks
+semantic value.  So "." alone on a line is used as a shorthand for ":write".
 
 Command reference
 
