@@ -33,23 +33,9 @@ Read more about jq filters at the tool's online manual.
 
 Shell syntax
 
-The current shell syntax is rudimentory but it suffices.  Commands are prefixed
-with a colon ':' and a command name followed by a space separated list of
-arguments.
-
-	> :load test.json
-
-The above loads the file "test.json" into the jqsh cache for inspection.  There
-is no quoting of arguments.  A plus '+' may be used on the last argument to
-include all charactors up to (but excluding) the next newline character.
-
-	> :push +.items[] | select(.name | contains("hello"))
-
-The above pushes the filter `.items[] | select(.name | contains("hello"))` on
-to the jqsh filter stack. Filters can be removed from the filter stack with ":pop".
-
-	> :pop
-
+The current shell syntax is rudimentory but it suffices.  Lines prefixed with a
+colon ':' commands, other lines are shorthand for specific commands.  Following
+is a list of all shell syntax in jqsh.
 
 	:<cmd> <arg1> <arg2> ...    execute cmd with the given arguments
 	:<cmd> ... +<argN>          execute cmd with an argument containing spaces (argN)
