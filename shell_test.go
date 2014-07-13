@@ -83,7 +83,10 @@ func TestShellReaderReadCommand_single(t *testing.T) {
 		{":push .items .[]", cmd("push", ".items", ".[]")},
 		{":push +.items | .[]", cmd("push", ".items | .[]")},
 		{".items | .[]", cmd("push", ".items | .[]")},
-		{"\n", cmd("write")},
+		{"?.items | .[]", cmd("peek", ".items | .[]")},
+		{".", cmd("write")},
+		{"..", cmd("pop")},
+		{"\n..", cmd("pop")},
 	} {
 		sh := StringShellReader(test.str)
 		sh.SetOutput(ioutil.Discard)
