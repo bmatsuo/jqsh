@@ -188,10 +188,7 @@ func cmdPeek(jq *JQShell, flags *CmdFlags) error {
 
 	err = cmdWrite(jq, Flags("write", nil))
 
-	for _ = range make([]struct{}, len(filters)) {
-		jq.Stack.Pop()
-	}
-
+	jq.Stack.Pop(len(filters))
 	if err != nil {
 		return fmt.Errorf("invalid filter: %v", err)
 	}
@@ -218,11 +215,11 @@ func cmdPush(jq *JQShell, flags *CmdFlags) error {
 	}
 	err = testFilter(jq)
 	if err != nil {
-		jq.Stack.Pop()
+		jq.Stack.Pop(1)
 		return err
 	}
 	if !*quiet {
-		return cmdWrite(jq, Flags("write", nil))
+		return cmdWrite(jq, Flags("write", []string{}))
 	}
 	return nil
 }
@@ -249,6 +246,17 @@ func testFilter(jq *JQShell) error {
 		close(stop)
 		return fmt.Errorf("jq timed out processing the filter")
 	}
+}
+
+func cmdPopAll(jq *JQShell, flags *CmdFlags) error {
+	err := flags.Parse(nil)
+	if IsHelp(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	jq.Stack.PopAll()
 	return nil
 }
 
@@ -279,8 +287,9 @@ func cmdPop(jq *JQShell, flags *CmdFlags) error {
 	if n < 0 {
 		return fmt.Errorf("argument must be positive")
 	}
-	for i := 0; i < n; i++ {
-		jq.Stack.Pop()
+	_, err = jq.Stack.Pop(n)
+	if err != nil {
+		return err
 	}
 	if !*quiet {
 		return cmdWrite(jq, Flags("write", nil))
@@ -291,6 +300,7 @@ func cmdPop(jq *JQShell, flags *CmdFlags) error {
 func cmdLoad(jq *JQShell, flags *CmdFlags) error {
 	flags.ArgSet("filename")
 	quiet := flags.Bool("q", false, "quiet -- no implicit :write after setting input")
+	keepStack := flags.Bool("k", false, "keep the current filter stack after setting input")
 	err := flags.Parse(nil)
 	if IsHelp(err) {
 		return nil
@@ -313,6 +323,9 @@ func cmdLoad(jq *JQShell, flags *CmdFlags) error {
 	}
 	jq.filename = args[0]
 	jq.istmp = false
+	if !*keepStack {
+		jq.Stack.PopAll()
+	}
 	if !*quiet {
 		return cmdWrite(jq, Flags("write", nil))
 	}
@@ -494,6 +507,7 @@ func cmdRaw(jq *JQShell, flags *CmdFlags) error {
 func cmdExec(jq *JQShell, flags *CmdFlags) error {
 	flags.ArgSet("name", "arg", "...")
 	quiet := flags.Bool("q", false, "quiet -- no implicit :write after setting input")
+	keepStack := flags.Bool("k", false, "keep the current filter stack after setting input")
 	ignore := flags.Bool("ignore", false, "ignore process exit status")
 	filename := flags.String("o", "", "a json file produced by the command")
 	pfilename := flags.String("O", "", "like -O but the file will not be deleted by jqsh")
@@ -554,6 +568,10 @@ func cmdExec(jq *JQShell, flags *CmdFlags) error {
 	}
 
 	jq.SetInputFile(path, istmp)
+
+	if !*keepStack {
+		jq.Stack.PopAll()
+	}
 
 	if !*quiet {
 		return cmdWrite(jq, Flags("write", nil))

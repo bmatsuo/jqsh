@@ -285,12 +285,26 @@ func (s *JQStack) Push(cmd Filter) {
 	s.pipe = append(s.pipe, cmd)
 }
 
-func (s *JQStack) Pop() (Filter, error) {
+func (s *JQStack) Pop(n int) ([]Filter, error) {
 	if len(s.pipe) == 0 {
 		return nil, ErrStackEmpty
 	}
-	n := len(s.pipe)
-	filt := s.pipe[n-1]
-	s.pipe = s.pipe[:n-1]
+	m := len(s.pipe)
+	if m < n {
+		n = m
+	}
+	filt := make([]Filter, n)
+	copy(filt, s.pipe[m-n:])
+	for i := m - n; i < m; i++ {
+		s.pipe[i] = nil
+	}
+	s.pipe = s.pipe[:m-n]
 	return filt, nil
+}
+
+func (s *JQStack) PopAll() {
+	for i := range s.pipe {
+		s.pipe[i] = nil
+	}
+	s.pipe = s.pipe[:0]
 }

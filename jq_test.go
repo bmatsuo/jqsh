@@ -134,25 +134,25 @@ func TestJQStack(t *testing.T) {
 		t.Fatalf("incorrect filter stack: %v", fs)
 	}
 
-	s.Pop()
+	s.Pop(1)
 	fs = s.JQFilter()
 	if !reflect.DeepEqual(fs, []string{"hello"}) {
 		t.Fatalf("incorrect filter stack: %v", fs)
 	}
 
-	s.Pop()
+	s.Pop(1)
 	fs = s.JQFilter()
 	if !reflect.DeepEqual(fs, []string{"hello"}) {
 		t.Fatalf("incorrect filter stack: %v", fs)
 	}
 
-	s.Pop()
+	s.Pop(1)
 	fs = s.JQFilter()
 	if len(fs) != 0 {
 		t.Fatalf("incorrect filter stack: %v", fs)
 	}
 
-	s.Pop()
+	s.Pop(1)
 	fs = s.JQFilter()
 	if len(fs) != 0 {
 		t.Fatalf("incorrect filter stack: %v", fs)

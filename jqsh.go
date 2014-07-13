@@ -177,6 +177,7 @@ func NewJQShell(bin string, sh ShellReader) *JQShell {
 	jq.lib.Register("push", JQShellCommandFunc(cmdPush))
 	jq.lib.Register("peek", JQShellCommandFunc(cmdPeek))
 	jq.lib.Register("pop", JQShellCommandFunc(cmdPop))
+	jq.lib.Register("popall", JQShellCommandFunc(cmdPopAll))
 	jq.lib.Register("filter", JQShellCommandFunc(cmdFilter))
 	jq.lib.Register("script", JQShellCommandFunc(cmdScript))
 	jq.lib.Register("load", JQShellCommandFunc(cmdLoad))
