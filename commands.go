@@ -241,7 +241,10 @@ func testFilter(jq *JQShell) error {
 	}()
 	select {
 	case <-done:
-		return fmt.Errorf("%s (%v)", errbuf.Bytes(), err)
+		if err != nil {
+			return fmt.Errorf("%s (%v)", errbuf.Bytes(), err)
+		}
+		return nil
 	case <-time.After(testFilterTimeout):
 		close(stop)
 		return fmt.Errorf("jq timed out processing the filter")
