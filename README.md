@@ -16,6 +16,12 @@ If Go is installed on your system, you can instead compile the latest
 
     $ go get -u github.com/bmatsuo/jqsh
 
+**NOTE (Windows users):** I have no reason to think jqsh wouldn't build or work
+on Windows but I don't test on Windows and thus don't provide Windows
+executables. Feel free to [contribute](#contributing) patches for windows
+compatibility. But, until farther along in the future Windows will remain
+unofficially supported at best.
+
 ##Getting started
 
 Here's an example jqsh session to get a feel for how the shell works.  It's
@@ -43,6 +49,12 @@ arrives.
 
 The above command should work on Linux (untested) and [OS
 X](https://github.com/bmatsuo/jqsh/issues/3#issuecomment-47522319).
+
+##Contributing
+
+Open [issues](https://github.com/bmatsuo/jqsh/issues) for bugs, confusing
+behavior, suggested improvements, etc. I will review/accept pull requests for
+things marked "help wanted", or things I personally hand off to people.
 
 ##License
 
