@@ -137,6 +137,9 @@ func cmdFilter(jq *JQShell, flags *CmdFlags) error {
 	jqsyntax := flags.Bool("jq", false, "print the filter with jq syntax")
 	qchars := flags.String("quote", "", "quote and escaped quote runes the -jq filter string (e.g. \"'\\'\")")
 	err := flags.Parse(nil)
+	if IsHelp(err) {
+		return nil
+	}
 	if err != nil {
 		return err
 	}
@@ -171,6 +174,7 @@ func cmdFilter(jq *JQShell, flags *CmdFlags) error {
 
 func cmdPeek(jq *JQShell, flags *CmdFlags) error {
 	flags.ArgSet("filter", "...")
+	flags.ArgDoc("filter", "a jq filter (may contain pipes '|')")
 	err := flags.Parse(nil)
 	if IsHelp(err) {
 		return nil
@@ -198,6 +202,7 @@ func cmdPeek(jq *JQShell, flags *CmdFlags) error {
 
 func cmdPush(jq *JQShell, flags *CmdFlags) error {
 	flags.ArgSet("filter", "...")
+	flags.ArgDoc("filter", "a jq filter (may contain pipes '|')")
 	quiet := flags.Bool("q", false, "quiet -- no implicit :write after push")
 	err := flags.Parse(nil)
 	if IsHelp(err) {
@@ -262,6 +267,7 @@ func cmdPopAll(jq *JQShell, flags *CmdFlags) error {
 
 func cmdPop(jq *JQShell, flags *CmdFlags) error {
 	flags.ArgSet("[n]")
+	flags.ArgDoc("n=1", "the number items to pop off the stack")
 	quiet := flags.Bool("q", false, "quiet -- no implicit :write after pop")
 	err := flags.Parse(nil)
 	if IsHelp(err) {
@@ -299,6 +305,7 @@ func cmdPop(jq *JQShell, flags *CmdFlags) error {
 
 func cmdLoad(jq *JQShell, flags *CmdFlags) error {
 	flags.ArgSet("filename")
+	flags.ArgDoc("filename", "a file contain json data")
 	quiet := flags.Bool("q", false, "quiet -- no implicit :write after setting input")
 	keepStack := flags.Bool("k", false, "keep the current filter stack after setting input")
 	err := flags.Parse(nil)
@@ -334,6 +341,7 @@ func cmdLoad(jq *JQShell, flags *CmdFlags) error {
 
 func cmdPipeShell(jq *JQShell, flags *CmdFlags) error {
 	flags.ArgSet("command")
+	flags.ArgDoc("command", "a shell command (may contain pipes '|' and output redirection '>')")
 	color := flags.Bool("-color", false, "pass colorized json to command")
 	err := flags.Parse(nil)
 	if IsHelp(err) {
@@ -381,6 +389,7 @@ func cmdPipeShell(jq *JQShell, flags *CmdFlags) error {
 
 func cmdWrite(jq *JQShell, flags *CmdFlags) error {
 	flags.ArgSet("[filename]")
+	flags.ArgDoc("filename", "write to a file instead of stdout/pager")
 	err := flags.Parse(nil)
 	if IsHelp(err) {
 		return nil
@@ -455,6 +464,7 @@ func cmdWrite_io(jq *JQShell, w io.WriteCloser, color bool, stop chan struct{}) 
 
 func cmdRaw(jq *JQShell, flags *CmdFlags) error {
 	flags.ArgSet("[filename]")
+	flags.ArgDoc("filename", "write to a file instead of stdout/pager")
 	err := flags.Parse(nil)
 	if IsHelp(err) {
 		return nil
@@ -505,7 +515,9 @@ func cmdRaw(jq *JQShell, flags *CmdFlags) error {
 }
 
 func cmdExec(jq *JQShell, flags *CmdFlags) error {
-	flags.ArgSet("name", "arg", "...")
+	flags.ArgSet("cmd", "[arg ...]")
+	flags.ArgDoc("cmd", "a name in PATH or the path to an executable file")
+	flags.ArgDoc("arg", "passed as an argument to cmd")
 	quiet := flags.Bool("q", false, "quiet -- no implicit :write after setting input")
 	keepStack := flags.Bool("k", false, "keep the current filter stack after setting input")
 	ignore := flags.Bool("ignore", false, "ignore process exit status")
@@ -616,12 +628,13 @@ type CmdFlags struct {
 	w       io.Writer
 	name    string
 	args    []string
+	argdocs [][]string
 	argsets [][]string
 }
 
 func Flags(name string, args []string) *CmdFlags {
 	set := flag.NewFlagSet(name, flag.ContinueOnError)
-	f := &CmdFlags{set, nil, name, args, nil}
+	f := &CmdFlags{set, nil, name, args, nil, nil}
 	f.SetOutput(os.Stderr)
 	set.Usage = f.usage
 	return f
@@ -629,6 +642,10 @@ func Flags(name string, args []string) *CmdFlags {
 
 func (f *CmdFlags) ArgSet(args ...string) {
 	f.argsets = append(f.argsets, args)
+}
+
+func (f *CmdFlags) ArgDoc(arg, help string) {
+	f.argdocs = append(f.argdocs, []string{arg, help})
 }
 
 func (f *CmdFlags) usage() {
@@ -648,6 +665,12 @@ func (f *CmdFlags) usage() {
 		}
 	}
 	w.Flush()
+	for _, argdoc := range f.argdocs {
+		if len(argdoc) == 0 {
+			panic("empty argdoc")
+		}
+		fmt.Fprintf(fw, "  %s: %s\n", argdoc[0], strings.Join(argdoc[1:], " "))
+	}
 	f.PrintDefaults()
 }
 
