@@ -201,6 +201,7 @@ func cmdPeek(jq *JQShell, flags *CmdFlags) error {
 
 func cmdPush(jq *JQShell, flags *CmdFlags) error {
 	flags.ArgSet("filter", "...")
+	quiet := flags.Bool("q", false, "quiet -- no implicit :write after push")
 	err := flags.Parse(nil)
 	if IsHelp(err) {
 		return nil
@@ -218,8 +219,12 @@ func cmdPush(jq *JQShell, flags *CmdFlags) error {
 	err = testFilter(jq)
 	if err != nil {
 		jq.Stack.Pop()
+		return err
 	}
-	return err
+	if !*quiet {
+		return cmdWrite(jq, Flags("write", nil))
+	}
+	return nil
 }
 
 var testFilterTimeout = 10 * time.Second
@@ -246,6 +251,7 @@ func testFilter(jq *JQShell) error {
 
 func cmdPop(jq *JQShell, flags *CmdFlags) error {
 	flags.ArgSet("[n]")
+	quiet := flags.Bool("q", false, "quiet -- no implicit :write after pop")
 	err := flags.Parse(nil)
 	if IsHelp(err) {
 		return nil
@@ -273,11 +279,15 @@ func cmdPop(jq *JQShell, flags *CmdFlags) error {
 	for i := 0; i < n; i++ {
 		jq.Stack.Pop()
 	}
+	if !*quiet {
+		return cmdWrite(jq, Flags("write", nil))
+	}
 	return nil
 }
 
 func cmdLoad(jq *JQShell, flags *CmdFlags) error {
 	flags.ArgSet("filename")
+	quiet := flags.Bool("q", false, "quiet -- no implicit :write after setting input")
 	err := flags.Parse(nil)
 	if IsHelp(err) {
 		return nil
@@ -300,6 +310,9 @@ func cmdLoad(jq *JQShell, flags *CmdFlags) error {
 	}
 	jq.filename = args[0]
 	jq.istmp = false
+	if !*quiet {
+		return cmdWrite(jq, Flags("write", nil))
+	}
 	return nil
 }
 
@@ -477,6 +490,7 @@ func cmdRaw(jq *JQShell, flags *CmdFlags) error {
 
 func cmdExec(jq *JQShell, flags *CmdFlags) error {
 	flags.ArgSet("name", "arg", "...")
+	quiet := flags.Bool("q", false, "quiet -- no implicit :write after setting input")
 	ignore := flags.Bool("ignore", false, "ignore process exit status")
 	filename := flags.String("o", "", "a json file produced by the command")
 	pfilename := flags.String("O", "", "like -O but the file will not be deleted by jqsh")
@@ -537,6 +551,10 @@ func cmdExec(jq *JQShell, flags *CmdFlags) error {
 	}
 
 	jq.SetInputFile(path, istmp)
+
+	if !*quiet {
+		return cmdWrite(jq, Flags("write", nil))
+	}
 
 	return nil
 }
