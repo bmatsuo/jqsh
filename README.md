@@ -7,9 +7,9 @@ An interactive wrapper to the [jq](http://stedolan.github.io/jq/) command line u
 Download a [binary distribution](https://github.com/bmatsuo/jqsh/releases) for
 your system  and extract it into your PATH (for example, in "/usr/bin").  Be
 aware **the installation command below varies** depending on your system and
-the current version of jqsh (it is for jqsh0.3.1 on OS X).
+the current version of jqsh (it is for jqsh0.4 on OS X).
 
-    $ sudo tar -C /usr/bin -xvzf jqsh0.3.1.darwin-amd64.tar.gz
+    $ sudo tar -C /usr/bin -xvzf jqsh0.4.darwin-amd64.tar.gz
 
 If Go is installed on your system, you can instead compile the latest
 (unstable) version of jqsh.
