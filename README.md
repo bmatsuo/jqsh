@@ -50,11 +50,30 @@ arrives.
 The above command should work on Linux (untested) and [OS
 X](https://github.com/bmatsuo/jqsh/issues/3#issuecomment-47522319).
 
+##Troubleshooting
+
+If you run into bugs or confusing behavior first update to the latest release.
+If the behavior persists [search for related
+issues](https://github.com/bmatsuo/jqsh/search?ref=cmdform&type=Issues).
+
+As a last resort, [open an issue](https://github.com/bmatsuo/jqsh/issues/new).
+Be as descriptive as possible about your system and the situation in which you
+experience undesirable behavior.
+
 ##Contributing
 
-Open [issues](https://github.com/bmatsuo/jqsh/issues) for bugs, confusing
-behavior, suggested improvements, etc. I will review/accept pull requests for
+Everyone is encourage to make suggestions regarding how they think jqsh could
+be a better utility.  But I'd like to keep development fairly regulated in
+these early stages.  Do not open pull requests without first creating an issue
+and getting the OK to work on it.  I will review/accept pull requests for
 things marked "help wanted", or things I personally hand off to people.
+
+Once work on something has started it will be assigned to someone.  If you want
+to write a patch for something comment in the issue before you start and you
+will be assigned the issue.  To avoid duplication of work check issues for
+assignees and read the comments before writing a patch.  You can feel free to
+work on something without making it known, but I claim no responsibility if you
+waste hours doing so.
 
 ##License
 
