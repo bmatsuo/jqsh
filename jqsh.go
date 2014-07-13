@@ -1,6 +1,36 @@
 /*
 Command jqsh provides an interactive wrapper to the jq command line utility.
 
+The filter stack
+
+The core concept in jqsh is a stack of jq "filters".  Filters create a larger
+filter when joined with pipes "|".  And maintaining a stack of filters allows
+exploritory querying of JSON structures.
+
+Filters can be pushed onto the filter stack with ":push" and popped with
+":pop".
+
+	> :push .[]
+	> :push .type
+	> :pop
+	> :push [.type,.name]
+	> :pop 2
+
+The corresponding jq filter at each step is
+
+	.[]
+	.[] | .type
+	.[]
+	.[] | [.type,.name]
+	.
+
+Notice that in the last step the stack was emptied with ":pop 2". But jqsh
+leaves a "." on the stack.
+
+Read more about jq filters at the tool's online manual.
+
+	http://stedolan.github.io/jq/manual/#Basicfilters
+
 Shell syntax
 
 The current shell syntax is rudimentory but it suffices.  Commands are prefixed
@@ -16,41 +46,22 @@ include all charactors up to (but excluding) the next newline character.
 	> :push +.items[] | select(.name | contains("hello"))
 
 The above pushes the filter `.items[] | select(.name | contains("hello"))` on
-to the jqsh filter stack. This is such a common operation that it has a special
-shorthand.  A non-empty line that does not start with a colon causes the line's
-contents to be pushed on the filter stack. So the above line could be
-simplified.
-
-	> .[] | select(.gender == "Female")
-
-Blank lines are also a shorthand, printing the working filter stack applied to
-the input, equivalent to the "write" command.
-
-	> :write
-
-That is all of the syntax in jqsh.
-
-The filter stack
-
-The core concept in jqsh is a stack of jq "filters".  Filters create a larger
-filter when joined with pipes "|".  And maintaining a stack of filters allows
-exploritory querying of JSON structures.
-
-In the previous section the "push" command was demonstrated.  Pushing filters
-will effectively drill down into JSON structures.  To zoom out (or undo) the
-application of filters the "pop" command is used.
+to the jqsh filter stack. Filters can be removed from the filter stack with ":pop".
 
 	> :pop
 
-Called without arguments, "pop" will remove the most recent filter pushed onto
-the stack.  Multiple items can be popped off the stack by passing "pop" an
-integer argument (the number of items to pop).
 
-	> :pop 3
+	:<cmd> <arg1> <arg2> ..			execute cmd with the given arguments
+	:<cmd> ... +<argN>				execute cmd with an argument containing spaces (argN)
+	.								shorthand for ":write"
+	..								shorthand for ":pop"
+	?<filter>						shorthand for ":peek <filter>"
+	<filter>						shorthand for ":push <filter>"
 
-Read more about jq filters at the tool's online manual.
-
-	http://stedolan.github.io/jq/manual/#Basicfilters
+Note that "." is a valid jq filter but in jqsh it lacks meaning in the filter
+stack.  So instead of intepreting it as a filter it is a shorthand for
+":write".  Regardless the filter "." can be pushed on the stack by explicity
+invoking ":push".
 
 Command reference
 
