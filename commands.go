@@ -41,11 +41,12 @@ func Library(docs *DocOpt) *Lib {
 			panic("negative width")
 		}
 	}
+	lib.Register("help", JQShellCommandFunc(lib.help))
 	return lib
 }
 
-func (lib *Lib) help(jq *JQShell, args []string) error {
-	flags := Flags("help", args)
+func (lib *Lib) help(jq *JQShell, flags *CmdFlags) error {
+	flags.Docs("Command help browses documentation for jqsh.")
 	flags.ArgSet("[topic]")
 	flags.ArgDoc("topic", "a command name or other help topic")
 	err := flags.Parse(nil)
@@ -55,9 +56,9 @@ func (lib *Lib) help(jq *JQShell, args []string) error {
 	if err != nil {
 		return err
 	}
-	switch len(args) {
+	switch flags.NArg() {
 	case 1:
-		return lib.helpName(jq, args[0])
+		return lib.helpName(jq, flags.Arg(0))
 	case 0:
 		return lib.helpList(jq)
 	default:
@@ -84,7 +85,6 @@ func (lib *Lib) helpList(jq *JQShell) error {
 	for name := range lib.cmds {
 		names = append(names, name)
 	}
-	names = append(names, "help") // TODO make help a normal command, everything easier that way
 	sort.Strings(names)
 	for _, name := range names {
 		var buf bytes.Buffer
@@ -158,10 +158,6 @@ func (lib *Lib) formatp(w io.Writer, docs []string) {
 func (lib *Lib) Execute(jq *JQShell, name string, args []string) error {
 	lib.mut.Lock()
 	defer lib.mut.Unlock()
-	if name == "help" {
-		lib.help(jq, args)
-		return nil
-	}
 	return lib.exec(nil, jq, name, args)
 }
 
