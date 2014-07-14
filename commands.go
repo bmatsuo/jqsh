@@ -59,7 +59,7 @@ func (lib *Lib) help(jq *JQShell, args []string) error {
 	case 1:
 		return lib.helpName(jq, args[0])
 	case 0:
-		return lib.helpList()
+		return lib.helpList(jq)
 	default:
 		return fmt.Errorf("at most one help topic is allowed")
 	}
@@ -68,7 +68,7 @@ func (lib *Lib) help(jq *JQShell, args []string) error {
 func (lib *Lib) helpName(jq *JQShell, name string) error {
 	_, ok := lib.cmds[name]
 	if ok {
-		return lib.exec(jq, name, []string{"-h"})
+		return lib.exec(nil, jq, name, []string{"-h"})
 	}
 	docs, ok := lib.topics[name]
 	if ok {
@@ -78,7 +78,7 @@ func (lib *Lib) helpName(jq *JQShell, name string) error {
 	return fmt.Errorf("unknown topic")
 }
 
-func (lib *Lib) helpList() error {
+func (lib *Lib) helpList(jq *JQShell) error {
 	fmt.Println("commands:")
 	var names []string
 	for name := range lib.cmds {
@@ -87,7 +87,10 @@ func (lib *Lib) helpList() error {
 	names = append(names, "help") // TODO make help a normal command, everything easier that way
 	sort.Strings(names)
 	for _, name := range names {
-		fmt.Println("\t" + name)
+		var buf bytes.Buffer
+		lib.exec(&buf, jq, name, []string{"-h"})
+		synop := doc.Synopsis(buf.String())
+		fmt.Println("  " + name + " -- " + synop)
 	}
 	if len(names) > 0 {
 		names = names[:0]
@@ -100,7 +103,8 @@ func (lib *Lib) helpList() error {
 		}
 		sort.Strings(names)
 		for _, name := range names {
-			fmt.Println("\t" + name)
+			synop := doc.Synopsis(strings.Join(lib.topics[name], "\n"))
+			fmt.Println("  " + name + " -- " + synop)
 		}
 	}
 
@@ -158,15 +162,19 @@ func (lib *Lib) Execute(jq *JQShell, name string, args []string) error {
 		lib.help(jq, args)
 		return nil
 	}
-	return lib.exec(jq, name, args)
+	return lib.exec(nil, jq, name, args)
 }
 
-func (lib *Lib) exec(jq *JQShell, name string, args []string) error {
+func (lib *Lib) exec(w io.Writer, jq *JQShell, name string, args []string) error {
 	cmd, ok := lib.cmds[name]
 	if !ok {
 		return fmt.Errorf("%v: unknown command", name)
 	}
-	err := cmd.ExecuteShellCommand(jq, Flags(name, args))
+	flags := Flags(name, args)
+	if w != nil {
+		flags.SetOutput(w)
+	}
+	err := cmd.ExecuteShellCommand(jq, flags)
 	if err != nil {
 		return ExecError{append([]string{name}, args...), err}
 	}
@@ -186,6 +194,8 @@ func (fn JQShellCommandFunc) ExecuteShellCommand(jq *JQShell, flags *CmdFlags) e
 }
 
 func cmdQuit(jq *JQShell, flags *CmdFlags) error {
+	flags.Docs("Command quit exits jqsh.")
+	flags.ArgSet()
 	err := flags.Parse(nil)
 	if err != nil {
 		return err
@@ -194,11 +204,19 @@ func cmdQuit(jq *JQShell, flags *CmdFlags) error {
 }
 
 func cmdScript(jq *JQShell, flags *CmdFlags) error {
+	flags.Docs("Command script generates a shell script from the current filter.")
+	flags.ArgSet()
 	flags.Bool("oneline", false, "do not print a hash-bang (#!) line")
 	flags.String("f", "", "specify the file argument to jq")
 	flags.Bool("F", false, "use the current file as the argument to jq")
 	flags.String("o", "", "path to write executable script")
-	flags.Parse(nil)
+	err := flags.Parse(nil)
+	if IsHelp(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
 
 	var script []string
 	script = append(script, "#!/usr/bin/env sh")
@@ -221,6 +239,7 @@ func shellEscape(s, q, qesc string) string {
 }
 
 func cmdFilter(jq *JQShell, flags *CmdFlags) error {
+	flags.Docs("Command filter prints the current filter stack.")
 	jqsyntax := flags.Bool("jq", false, "print the filter with jq syntax")
 	qchars := flags.String("quote", "", "quote and escaped quote runes the -jq filter string (e.g. \"'\\'\")")
 	err := flags.Parse(nil)
@@ -260,6 +279,7 @@ func cmdFilter(jq *JQShell, flags *CmdFlags) error {
 }
 
 func cmdPeek(jq *JQShell, flags *CmdFlags) error {
+	flags.Docs("Command peek applies filters without pushing them on the stack.")
 	flags.ArgSet("filter", "...")
 	flags.ArgDoc("filter", "a jq filter (may contain pipes '|')")
 	err := flags.Parse(nil)
@@ -288,6 +308,7 @@ func cmdPeek(jq *JQShell, flags *CmdFlags) error {
 }
 
 func cmdPush(jq *JQShell, flags *CmdFlags) error {
+	flags.Docs("Command push adds a filter to the stack.")
 	flags.ArgSet("filter", "...")
 	flags.ArgDoc("filter", "a jq filter (may contain pipes '|')")
 	quiet := flags.Bool("q", false, "quiet -- no implicit :write after push")
@@ -341,6 +362,7 @@ func testFilter(jq *JQShell) error {
 }
 
 func cmdPopAll(jq *JQShell, flags *CmdFlags) error {
+	flags.Docs("Command popall removes all filters from the stack.")
 	err := flags.Parse(nil)
 	if IsHelp(err) {
 		return nil
@@ -353,6 +375,7 @@ func cmdPopAll(jq *JQShell, flags *CmdFlags) error {
 }
 
 func cmdPop(jq *JQShell, flags *CmdFlags) error {
+	flags.Docs("Command pop removes the last filter(s) pushed on the stack.")
 	flags.ArgSet("[n]")
 	flags.ArgDoc("n=1", "the number items to pop off the stack")
 	quiet := flags.Bool("q", false, "quiet -- no implicit :write after pop")
@@ -391,6 +414,7 @@ func cmdPop(jq *JQShell, flags *CmdFlags) error {
 }
 
 func cmdLoad(jq *JQShell, flags *CmdFlags) error {
+	flags.Docs("Command load sets the input to the contents of a file.")
 	flags.ArgSet("filename")
 	flags.ArgDoc("filename", "a file contain json data")
 	quiet := flags.Bool("q", false, "quiet -- no implicit :write after setting input")
@@ -427,6 +451,7 @@ func cmdLoad(jq *JQShell, flags *CmdFlags) error {
 }
 
 func cmdPipeShell(jq *JQShell, flags *CmdFlags) error {
+	flags.Docs("Command sh pipes the filter output to a shell command.")
 	flags.ArgSet("command")
 	flags.ArgDoc("command", "a shell command (may contain pipes '|' and output redirection '>')")
 	color := flags.Bool("-color", false, "pass colorized json to command")
@@ -475,6 +500,7 @@ func cmdPipeShell(jq *JQShell, flags *CmdFlags) error {
 }
 
 func cmdWrite(jq *JQShell, flags *CmdFlags) error {
+	flags.Docs("Command write writes filter output to a file or stdout.")
 	flags.ArgSet("[filename]")
 	flags.ArgDoc("filename", "write to a file instead of stdout/pager")
 	err := flags.Parse(nil)
@@ -550,6 +576,7 @@ func cmdWrite_io(jq *JQShell, w io.WriteCloser, color bool, stop chan struct{}) 
 }
 
 func cmdRaw(jq *JQShell, flags *CmdFlags) error {
+	flags.Docs("Command raw writes input to a file without applying the filter.")
 	flags.ArgSet("[filename]")
 	flags.ArgDoc("filename", "write to a file instead of stdout/pager")
 	err := flags.Parse(nil)
@@ -602,6 +629,7 @@ func cmdRaw(jq *JQShell, flags *CmdFlags) error {
 }
 
 func cmdExec(jq *JQShell, flags *CmdFlags) error {
+	flags.Docs("Command exec applies filters to the output of a shell command.")
 	flags.ArgSet("cmd", "[arg ...]")
 	flags.ArgDoc("cmd", "a name in PATH or the path to an executable file")
 	flags.ArgDoc("arg", "passed as an argument to cmd")
