@@ -47,10 +47,6 @@ func (f *CmdFlags) ArgDoc(arg, help string) {
 	f.argdocs = append(f.argdocs, []string{arg, help})
 }
 
-func (f *CmdFlags) Documentation() string {
-	return strings.Join(f.docs, "\n")
-}
-
 func (f *CmdFlags) help() {
 	w := f.w
 	if w == nil {

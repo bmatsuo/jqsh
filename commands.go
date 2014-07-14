@@ -450,11 +450,19 @@ func cmdLoad(jq *JQShell, flags *CmdFlags) error {
 	return nil
 }
 
-func cmdPipeShell(jq *JQShell, flags *CmdFlags) error {
-	flags.Docs("Command sh pipes the filter output to a shell command.")
-	flags.ArgSet("command")
-	flags.ArgDoc("command", "a shell command (may contain pipes '|' and output redirection '>')")
-	color := flags.Bool("-color", false, "pass colorized json to command")
+func cmdPipe(jq *JQShell, flags *CmdFlags) error {
+	flags.Docs("Command pipe runs a shell command.")
+	flags.ArgSet("cmd")
+	flags.ArgDoc("cmd", "a shell script to execute")
+	pipein := flags.Bool("in", false, "set filter input to cmd's stdout")
+	pipeout := flags.Bool("out", false, "write filter output to cmd's stdin")
+	quiet := flags.Bool("q", false, "quiet -- no implicit :write after setting input")
+	keepStack := flags.Bool("k", false, "keep the current filter stack after setting input")
+	ignore := flags.Bool("ignore", false, "ignore process exit status when setting input")
+	filename := flags.String("o", "", "a json file produced by the command to use as input")
+	pfilename := flags.String("O", "", "like -O but the file will not be deleted by jqsh")
+	nocache := flags.Bool("c", false, "disable caching of filter input (no effect with -o)")
+	color := flags.Bool("color", false, "write escape codes in filter output")
 	err := flags.Parse(nil)
 	if IsHelp(err) {
 		return nil
@@ -462,15 +470,117 @@ func cmdPipeShell(jq *JQShell, flags *CmdFlags) error {
 	if err != nil {
 		return err
 	}
-	args := flags.Args()
-	if len(args) == 0 {
+
+	if flags.NArg() == 0 {
 		return fmt.Errorf("missing command")
 	}
+	if flags.NArg() > 1 {
+		return fmt.Errorf("expect exactly one command")
+	}
+
+	if *pipein && *pipeout {
+		return fmt.Errorf("command cannot be both input and output")
+	}
+
+	if *filename != "" && *pfilename != "" {
+		return fmt.Errorf("both -o and -O given")
+	}
+
+	if !*pipein && !*pipeout {
+		*pipein = true
+	}
+
+	if *pipeout {
+		return pipeTo(jq, flags.Arg(0), *color)
+	}
+	if *pipein {
+		options := &InputPipeOptions{
+			Quiet:     *quiet,
+			KeepStack: *keepStack,
+			Ignore:    *ignore,
+			NoCache:   *nocache,
+		}
+		if *filename != "" {
+			options.Filename = *filename
+			options.Delete = true
+		}
+		if *pfilename != "" {
+			options.Filename = *filename
+		}
+		return pipeFrom(jq, flags.Arg(0), options)
+	}
+
+	panic("unreachable")
+}
+
+type InputPipeOptions struct {
+	Quiet     bool
+	KeepStack bool
+	Ignore    bool
+	Filename  string
+	Delete    bool
+	NoCache   bool
+}
+
+func pipeFrom(jq *JQShell, script string, options *InputPipeOptions) error {
+	var opt InputPipeOptions
+	if options != nil {
+		opt = *options
+	}
+	var out io.Writer
+	var path string
+	var istmp bool
+	if opt.Filename != "" {
+		path = opt.Filename
+		istmp = opt.Delete
+	}
+	if opt.NoCache {
+		jq.SetInput(_cmdExecInput(jq, "bash", "-c", script))
+		return nil
+	}
+	if path == "" {
+		tmpfile, err := ioutil.TempFile("", "jqsh-exec-")
+		if err != nil {
+			return fmt.Errorf("creating temp file: %v", err)
+		}
+		path = tmpfile.Name()
+		istmp = true
+		out = tmpfile
+		defer tmpfile.Close()
+	} else {
+		out = os.Stdout
+	}
+
+	stdout, err := _cmdExecInput(jq, "bash", "-c", script)()
+	if err != nil && !opt.Ignore {
+		os.Remove(path)
+		return err
+	}
+	_, err = io.Copy(out, stdout)
+	if err != nil {
+		os.Remove(path)
+		return err
+	}
+
+	jq.SetInputFile(path, istmp)
+
+	if !opt.KeepStack {
+		jq.Stack.PopAll()
+	}
+
+	if !opt.Quiet {
+		return cmdWrite(jq, Flags("write", nil))
+	}
+
+	return nil
+}
+
+func pipeTo(jq *JQShell, script string, color bool) error {
 	shell := os.Getenv("SHELL")
 	if shell == "" {
 		shell = "bash"
 	}
-	shcmd := []string{shell, "-c", args[0]}
+	shcmd := []string{shell, "-c", script}
 	cmd := exec.Command(shell, shcmd[1:]...)
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
@@ -487,7 +597,7 @@ func cmdPipeShell(jq *JQShell, flags *CmdFlags) error {
 	if err != nil {
 		return ExecError{shcmd, err}
 	}
-	_, _, err = cmdWrite_io(jq, stdin, *color, nil)
+	_, _, err = cmdWrite_io(jq, stdin, color, nil)
 	if err != nil {
 		<-waiterr
 		return err
@@ -626,85 +736,6 @@ func cmdRaw(jq *JQShell, flags *CmdFlags) error {
 		return nil
 	}
 	return fmt.Errorf("file output not allowed")
-}
-
-func cmdExec(jq *JQShell, flags *CmdFlags) error {
-	flags.Docs("Command exec applies filters to the output of a shell command.")
-	flags.ArgSet("cmd", "[arg ...]")
-	flags.ArgDoc("cmd", "a name in PATH or the path to an executable file")
-	flags.ArgDoc("arg", "passed as an argument to cmd")
-	quiet := flags.Bool("q", false, "quiet -- no implicit :write after setting input")
-	keepStack := flags.Bool("k", false, "keep the current filter stack after setting input")
-	ignore := flags.Bool("ignore", false, "ignore process exit status")
-	filename := flags.String("o", "", "a json file produced by the command")
-	pfilename := flags.String("O", "", "like -O but the file will not be deleted by jqsh")
-	nocache := flags.Bool("c", false, "disable caching of results (no effect with -o)")
-	err := flags.Parse(nil)
-	if IsHelp(err) {
-		return nil
-	}
-	if err != nil {
-		return err
-	}
-	args := flags.Args()
-
-	var out io.Writer
-	var path string
-	var istmp bool
-	if *filename != "" && *pfilename != "" {
-		return fmt.Errorf("both -o and -O given")
-	}
-	if *filename != "" {
-		path = *filename
-		istmp = true
-	} else if *pfilename != "" {
-		path = *pfilename
-	}
-	if *nocache {
-		jq.SetInput(_cmdExecInput(jq, args[0], args[1:]...))
-		return nil
-	}
-	if path == "" {
-		tmpfile, err := ioutil.TempFile("", "jqsh-exec-")
-		if err != nil {
-			return fmt.Errorf("creating temp file: %v", err)
-		}
-		path = tmpfile.Name()
-		istmp = true
-		out = tmpfile
-		defer tmpfile.Close()
-	} else {
-		out = os.Stdout
-	}
-
-	if err != nil {
-		return err
-	}
-	if len(args) == 0 {
-		return fmt.Errorf("missing command")
-	}
-	stdout, err := _cmdExecInput(jq, args[0], args[1:]...)()
-	if err != nil && !*ignore {
-		os.Remove(path)
-		return err
-	}
-	_, err = io.Copy(out, stdout)
-	if err != nil {
-		os.Remove(path)
-		return err
-	}
-
-	jq.SetInputFile(path, istmp)
-
-	if !*keepStack {
-		jq.Stack.PopAll()
-	}
-
-	if !*quiet {
-		return cmdWrite(jq, Flags("write", nil))
-	}
-
-	return nil
 }
 
 func _cmdExecInput(jq *JQShell, name string, args ...string) func() (io.ReadCloser, error) {
