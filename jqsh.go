@@ -65,6 +65,7 @@ import (
 	"log"
 	"os"
 	"runtime"
+	"strings"
 	"sync"
 )
 
@@ -102,16 +103,15 @@ func main() {
 	}
 
 	// setup initial commands to play before reading input.  single files are
-	// loaded with :load, multple files are loaded with :exec cat
+	// loaded with :load, multple files are loaded with :pipe cat
 	var initcmds [][]string
-	doexec := func(cache bool, name string, args ...string) {
+	doexec := func(cache bool, script string) {
 		cmd := make([]string, 0, 3+len(args))
-		cmd = append(cmd, "exec")
+		cmd = append(cmd, "pipe")
 		if !cache {
 			cmd = append(cmd, "-c")
 		}
-		cmd = append(cmd, name)
-		cmd = append(cmd, args...)
+		cmd = append(cmd, script)
 		initcmds = append(initcmds, cmd)
 	}
 	switch {
@@ -120,7 +120,10 @@ func main() {
 			{"load", args[0]},
 		}
 	case len(args) > 1:
-		doexec(false, "cat", args...)
+		// TODO fix filename escaping. probably by wrapping cat in a bash
+		// script and doing proper quote escaping. this method should work ok
+		// in many situation under bash. it does not work as often under csh.
+		doexec(false, fmt.Sprintf("cat %s", strings.Trim(fmt.Sprintf("%q", args), "[]")))
 	}
 
 	// create a shell environment and wait for it to receive EOF or a 'quit'
