@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"go/doc"
 	"io"
 	"io/ioutil"
 	"os"
@@ -15,57 +16,128 @@ import (
 	"unicode/utf8"
 )
 
-type Lib struct {
-	mut    sync.Mutex
-	topics map[string]string
-	cmds   map[string]JQShellCommand
+// DocOpt contains documentation formatting option.. I had to do it.
+type DocOpt struct {
+	Indent    string // indentation for formatted text
+	PreIndent string // indentation for preformatted text
+	Width     int    // in unicode runes
 }
 
-func Library() *Lib {
+type Lib struct {
+	mut    sync.Mutex
+	topics map[string][]string
+	cmds   map[string]JQShellCommand
+	docs   DocOpt
+}
+
+func Library(docs *DocOpt) *Lib {
 	lib := new(Lib)
-	lib.topics = make(map[string]string)
+	lib.topics = make(map[string][]string)
 	lib.cmds = make(map[string]JQShellCommand)
+	if docs != nil {
+		lib.docs = *docs
+		if lib.docs.Width < 0 {
+			panic("negative width")
+		}
+	}
 	return lib
 }
 
 func (lib *Lib) help(jq *JQShell, args []string) error {
 	flags := Flags("help", args)
+	flags.ArgSet("[topic]")
+	flags.ArgDoc("topic", "a command name or other help topic")
 	err := flags.Parse(nil)
 	if IsHelp(err) {
-		err = nil
+		return nil
 	}
 	if err != nil {
 		return err
 	}
-	if len(args) == 0 {
-		fmt.Println("available commands:")
-		for name := range lib.cmds {
+	switch len(args) {
+	case 1:
+		return lib.helpName(jq, args[0])
+	case 0:
+		return lib.helpList()
+	default:
+		return fmt.Errorf("at most one help topic is allowed")
+	}
+}
+
+func (lib *Lib) helpName(jq *JQShell, name string) error {
+	_, ok := lib.cmds[name]
+	if ok {
+		return lib.exec(jq, name, []string{"-h"})
+	}
+	docs, ok := lib.topics[name]
+	if ok {
+		lib.formatp(os.Stdout, docs)
+		return nil
+	}
+	return fmt.Errorf("unknown topic")
+}
+
+func (lib *Lib) helpList() error {
+	fmt.Println("available commands:")
+	for name := range lib.cmds {
+		fmt.Println("\t" + name)
+	}
+	fmt.Println("\thelp")
+	fmt.Println("pass -h to a command for usage details")
+
+	if len(lib.topics) > 0 {
+		fmt.Println("additional help topics:")
+		for name := range lib.topics {
 			fmt.Println("\t" + name)
 		}
-		fmt.Println("\thelp")
-		fmt.Println("pass -h to a command for usage details")
-
-		if len(lib.topics) > 0 {
-			fmt.Println("additional help topics:")
-			for name := range lib.topics {
-				fmt.Println("\t" + name)
-			}
-			fmt.Println("for information on a topic run `help <topic>`")
-		}
+		fmt.Println("for information on a topic run `help <topic>`")
 	}
+
 	return nil
 }
 
 func (lib *Lib) Register(name string, cmd JQShellCommand) {
 	lib.mut.Lock()
 	defer lib.mut.Unlock()
-	_, ok := lib.cmds[name]
-	if ok {
-		panic("already registered")
+	err := lib.taken(name)
+	if err != nil {
+		panic(err)
 	}
 	lib.cmds[name] = cmd
 }
 
+func (lib *Lib) RegisterHelp(name string, docs ...string) {
+	lib.mut.Lock()
+	defer lib.mut.Unlock()
+	err := lib.taken(name)
+	if err != nil {
+		panic(err)
+	}
+	lib.topics[name] = docs
+}
+
+func (lib *Lib) taken(name string) error {
+	_, ok := lib.cmds[name]
+	if ok {
+		return fmt.Errorf("%q command already registered", name)
+	}
+	_, ok = lib.topics[name]
+	if ok {
+		return fmt.Errorf("%q help topic already registered", name)
+	}
+	return nil
+}
+
+// formatp joins the strings of doc into a single string, reformating by
+// wrapping long lines and normalizing paragram gap. formatp treats the strings
+// of doc as if they are separated by newlines. A new paragraph is determined
+// by either the first non-empty string or a sequence of two newlines.
+func (lib *Lib) formatp(w io.Writer, docs []string) {
+	doc.ToText(w, strings.Join(docs, "\n"), lib.docs.Indent, lib.docs.PreIndent, lib.docs.Width)
+}
+
+// Execute looks for name as a registered command and executes it. If name is
+// "help" then lib's help command is executed.
 func (lib *Lib) Execute(jq *JQShell, name string, args []string) error {
 	lib.mut.Lock()
 	defer lib.mut.Unlock()
@@ -73,6 +145,10 @@ func (lib *Lib) Execute(jq *JQShell, name string, args []string) error {
 		lib.help(jq, args)
 		return nil
 	}
+	return lib.exec(jq, name, args)
+}
+
+func (lib *Lib) exec(jq *JQShell, name string, args []string) error {
 	cmd, ok := lib.cmds[name]
 	if !ok {
 		return fmt.Errorf("%v: unknown command", name)

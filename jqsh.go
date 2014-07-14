@@ -173,7 +173,10 @@ func NewJQShell(bin string, sh ShellReader) *JQShell {
 		bin:   bin,
 		sh:    sh,
 	}
-	jq.lib = Library()
+	jq.lib = Library(&DocOpt{
+		PreIndent: "\t",
+		Width:     76,
+	})
 	jq.lib.Register("push", JQShellCommandFunc(cmdPush))
 	jq.lib.Register("peek", JQShellCommandFunc(cmdPeek))
 	jq.lib.Register("pop", JQShellCommandFunc(cmdPop))
