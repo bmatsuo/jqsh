@@ -186,6 +186,7 @@ func NewJQShell(bin string, sh ShellReader) *JQShell {
 		sh:    sh,
 	}
 	jq.lib = Library(&DocOpt{
+		Indent:    "  ",
 		PreIndent: "\t",
 		Width:     76,
 	})

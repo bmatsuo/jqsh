@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
+	"go/doc"
 	"io"
 	"io/ioutil"
 	"os"
@@ -15,8 +17,10 @@ func IsHelp(err error) bool {
 
 type CmdFlags struct {
 	*flag.FlagSet
+	docopt  DocOpt
 	w       io.Writer
 	name    string
+	about   []string
 	docs    []string
 	args    []string
 	argdocs [][]string
@@ -29,12 +33,20 @@ func Flags(name string, args []string) *CmdFlags {
 	f.FlagSet = set
 	f.name = name
 	f.args = args
+	f.docopt.Width = 76
+	f.docopt.Indent = "  "
+	f.docopt.PreIndent = "\t"
 	f.SetOutput(os.Stderr)
 	set.Usage = f.help
 	return f
 }
 
-// Docs sets sets the command's documentation
+// About provides a high level summary of the command.
+func (f *CmdFlags) About(docs ...string) {
+	f.about = docs
+}
+
+// Docs provides detailed documentation of the command's behavior.
 func (f *CmdFlags) Docs(docs ...string) {
 	f.docs = docs
 }
@@ -52,31 +64,38 @@ func (f *CmdFlags) help() {
 	if w == nil {
 		w = ioutil.Discard
 	}
-	if len(f.docs) > 0 {
-		fmt.Fprintln(w, strings.Join(f.docs, "\n"))
-		fmt.Fprintln(w)
+	var buf bytes.Buffer
+	f.FlagSet.SetOutput(&buf)
+	if len(f.about) > 0 {
+		fmt.Fprintln(&buf, strings.Join(f.about, "\n"))
+		fmt.Fprintln(&buf)
 	}
 	if len(f.argsets) == 0 {
-		fmt.Fprintln(w, f.name)
+		fmt.Fprintln(&buf, f.name)
 	} else {
 		sets := f.argsets
 		for _, set := range sets {
-			fmt.Fprintln(w, "  "+f.name+" "+strings.Join(set, " "))
+			fmt.Fprintln(&buf, "  "+f.name+" "+strings.Join(set, " "))
 		}
 	}
-	fmt.Fprintln(w)
+	fmt.Fprintln(&buf)
 	for _, argdoc := range f.argdocs {
 		if len(argdoc) == 0 {
 			panic("empty argdoc")
 		}
-		fmt.Fprintf(w, "  %s: %s\n", argdoc[0], strings.Join(argdoc[1:], " "))
+		fmt.Fprintf(&buf, "  %s: %s\n", argdoc[0], strings.Join(argdoc[1:], " "))
 	}
 	f.PrintDefaults()
+	if len(f.docs) > 0 {
+		fmt.Fprintln(&buf)
+		fmt.Fprintln(&buf, strings.Join(f.docs, "\n"))
+	}
+	doc.ToText(w, buf.String(), f.docopt.Indent, f.docopt.PreIndent, f.docopt.Width)
 }
 
 func (f *CmdFlags) SetOutput(w io.Writer) {
 	f.w = w
-	f.FlagSet.SetOutput(w)
+	//f.FlagSet.SetOutput(w)
 }
 
 func (f *CmdFlags) Parse(args *[]string) (err error) {
