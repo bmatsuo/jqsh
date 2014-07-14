@@ -535,7 +535,7 @@ func pipeFrom(jq *JQShell, script string, options *InputPipeOptions) error {
 		istmp = opt.Delete
 	}
 	if opt.NoCache {
-		jq.SetInput(_cmdExecInput(jq, "bash", "-c", script))
+		jq.SetInput(_pipeInput(jq, "bash", "-c", script))
 		return nil
 	}
 	if path == "" {
@@ -551,7 +551,7 @@ func pipeFrom(jq *JQShell, script string, options *InputPipeOptions) error {
 		out = os.Stdout
 	}
 
-	stdout, err := _cmdExecInput(jq, "bash", "-c", script)()
+	stdout, err := _pipeInput(jq, "bash", "-c", script)()
 	if err != nil && !opt.Ignore {
 		os.Remove(path)
 		return err
@@ -738,7 +738,7 @@ func cmdRaw(jq *JQShell, flags *CmdFlags) error {
 	return fmt.Errorf("file output not allowed")
 }
 
-func _cmdExecInput(jq *JQShell, name string, args ...string) func() (io.ReadCloser, error) {
+func _pipeInput(jq *JQShell, name string, args ...string) func() (io.ReadCloser, error) {
 	return func() (io.ReadCloser, error) {
 		cmd := exec.Command(name, args...)
 		//cmd.Stdin = os.Stdin
