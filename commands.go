@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"text/tabwriter"
 	"time"
 	"unicode/utf8"
 )
@@ -82,35 +83,41 @@ func (lib *Lib) helpName(jq *JQShell, name string) error {
 }
 
 func (lib *Lib) helpList(jq *JQShell) error {
-	fmt.Println("commands:")
+	var buf bytes.Buffer
+	fmt.Fprintln(&buf, "commands:")
 	var names []string
 	for name := range lib.cmds {
 		names = append(names, name)
 	}
 	sort.Strings(names)
+	tw := tabwriter.NewWriter(&buf, 5, 4, 2, ' ', 0) // TODO chosen more carefully
 	for _, name := range names {
-		var buf bytes.Buffer
-		lib.exec(&buf, jq, name, []string{"-h"})
-		synop := doc.Synopsis(buf.String())
-		fmt.Println("  " + name + " -- " + synop)
+		var cbuf bytes.Buffer
+		lib.exec(&cbuf, jq, name, []string{"-h"})
+		synop := doc.Synopsis(cbuf.String())
+		fmt.Fprintln(tw, "  "+name+"\t"+synop)
 	}
+	tw.Flush()
+
+	// reuse names to print topics
 	if len(names) > 0 {
 		names = names[:0]
 	}
-
 	if len(lib.topics) > 0 {
-		fmt.Println("other topics:")
+		fmt.Fprintln(&buf, "other topics:")
 		for name := range lib.topics {
 			names = append(names, name)
 		}
 		sort.Strings(names)
 		for _, name := range names {
 			synop := doc.Synopsis(strings.Join(lib.topics[name], "\n"))
-			fmt.Println("  " + name + " -- " + synop)
+			fmt.Fprintln(&buf, "  "+name+" -- "+synop)
 		}
 	}
 
-	fmt.Println("for information on a topic run `help <topic>`")
+	fmt.Fprintln(&buf, "for information on a topic run `help <topic>`")
+
+	doc.ToText(os.Stderr, buf.String(), lib.docs.Indent, lib.docs.PreIndent, lib.docs.Width)
 
 	return nil
 }
