@@ -10,8 +10,9 @@ fi
 build() {
     os=$1
     arch=$2
-    echo $os $arch
-    GOOS=$os GOARCH=$arch go build && tar czf "jqsh${TAG_NAME}.${os}-${arch}.tar.gz" jqsh && rm jqsh
+    tarfile="jqsh${TAG_NAME}.${os}-${arch}.tar.gz"
+    echo "$tarfile"
+    GOOS=$os GOARCH=$arch go build && tar czf "$tarfile" jqsh && rm jqsh
     [ $? -eq 0 ] || exit 1
 }
 
@@ -30,5 +31,6 @@ git tag -a "$1"
 
 build darwin amd64
 build linux amd64
+md5 jqsh"${TAG_NAME}".*.tar.gz > jqsh"${TAG_NAME}".md5
 
 echo "all distributions built successfully"
