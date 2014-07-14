@@ -65,17 +65,12 @@ experience undesirable behavior.
 Everyone is encouraged to [make
 suggestions](https://github.com/bmatsuo/jqsh/issues/new) regarding how they
 think jqsh could be a better utility.  But I'd like to keep development fairly
-regulated in these early stages.  Do not open pull requests without first
-opening an issue and getting the OK to work on it.  I will review/accept pull
-requests for things marked "help wanted", or things I personally hand off to
-people.
+regulated in these early stages.  Jqsh is an awesome utility and things could
+go in a bunch of directions. I just want to make sure it is guided properly and
+don't want to make big decisions hastily.
 
-Once work on something has started it will be assigned to someone.  If you want
-to write a patch for something comment in the issue before you start and you
-will be assigned the issue.  To avoid duplication of work check issues for
-assignees and read the comments before writing a patch.  You can feel free to
-work on something without making it known, but I claim no responsibility if you
-waste hours doing so.
+If you want to work on something, comment on the issue so that people don't end
+up worknig on the same thing by accident.
 
 ##License
 
