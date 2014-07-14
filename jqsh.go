@@ -73,8 +73,13 @@ var ErrNoInput = fmt.Errorf("no input")
 var ErrStackEmpty = fmt.Errorf("the stack is empty")
 
 func main() {
+	printVersion := flag.Bool("version", false, "print the versions of jqsh and jq then exit")
 	flag.Parse()
 	args := flag.Args()
+
+	if *printVersion {
+		fmt.Println("jqsh" + Version)
+	}
 
 	jqbin, err := LocateJQ("")
 	if err == ErrJQNotFound {
@@ -96,10 +101,14 @@ func main() {
 		fmt.Fprintln(os.Stderr, "locating jq:", err)
 		os.Exit(1)
 	}
-	_, err = CheckJQVersion(jqbin)
+	jqvers, err := CheckJQVersion(jqbin)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
+	}
+	if *printVersion {
+		fmt.Println(jqvers)
+		return
 	}
 
 	// setup initial commands to play before reading input.  single files are
