@@ -17,6 +17,8 @@ import (
 	"unicode/utf8"
 )
 
+var warnNoInput = "jqsh: no input has been declared"
+
 // DocOpt contains documentation formatting option.. I had to do it.
 type DocOpt struct {
 	Indent    string // indentation for formatted text
@@ -572,6 +574,15 @@ func pipeFrom(jq *JQShell, script string, options *InputPipeOptions) error {
 }
 
 func pipeTo(jq *JQShell, script string, color bool) error {
+	// warn if no input has been declared, but continue executing jq and paging
+	// output. i think this is the best thing to do.
+	// https://github.com/bmatsuo/jqsh/issues/23
+	if !jq.HasInput() {
+		fmt.Fprintln(os.Stderr, warnNoInput)
+	}
+
+	// execute the script under the users preferred shell.  when the process
+	// exits close the pipe jq is writing to.
 	shell := os.Getenv("SHELL")
 	if shell == "" {
 		shell = "bash"
@@ -593,6 +604,10 @@ func pipeTo(jq *JQShell, script string, color bool) error {
 	if err != nil {
 		return ExecError{shcmd, err}
 	}
+
+	// write jq output to the process until the pipe closes or there is no more
+	// filter output to write. wait for the script process to exit before
+	// returning in any case.
 	_, _, err = cmdWrite_io(jq, stdin, color, nil)
 	if err != nil {
 		<-waiterr
@@ -602,6 +617,7 @@ func pipeTo(jq *JQShell, script string, color bool) error {
 	if err != nil {
 		return ExecError{shcmd, err}
 	}
+
 	return nil
 }
 
@@ -616,6 +632,14 @@ func cmdWrite(jq *JQShell, flags *CmdFlags) error {
 	if err != nil {
 		return err
 	}
+
+	// warn if no input has been declared, but continue executing jq and paging
+	// output. i think this is the best thing to do.
+	// https://github.com/bmatsuo/jqsh/issues/23
+	if !jq.HasInput() {
+		fmt.Fprintln(os.Stderr, warnNoInput)
+	}
+
 	args := flags.Args()
 	if len(args) == 0 {
 		return cmdWrite_page(jq)

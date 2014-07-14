@@ -212,6 +212,10 @@ func (jq *JQShell) SetInput(fn func() (io.ReadCloser, error)) {
 	jq.inputfn = fn
 }
 
+func (jq *JQShell) HasInput() bool {
+	return jq.filename != "" || jq.inputfn != nil
+}
+
 func (jq *JQShell) Input() (io.ReadCloser, error) {
 	switch {
 	case jq.filename != "":
