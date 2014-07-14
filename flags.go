@@ -70,6 +70,7 @@ func (f *CmdFlags) help() {
 		fmt.Fprintln(&buf, strings.Join(f.about, "\n"))
 		fmt.Fprintln(&buf)
 	}
+	fmt.Fprintln(&buf, "usage:")
 	if len(f.argsets) == 0 {
 		fmt.Fprintln(&buf, f.name)
 	} else {
@@ -78,7 +79,9 @@ func (f *CmdFlags) help() {
 			fmt.Fprintln(&buf, "  "+f.name+" "+strings.Join(set, " "))
 		}
 	}
-	fmt.Fprintln(&buf)
+	if len(f.argdocs) > 0 {
+		fmt.Fprintln(&buf, "arguments and flags:")
+	}
 	for _, argdoc := range f.argdocs {
 		if len(argdoc) == 0 {
 			panic("empty argdoc")
