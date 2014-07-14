@@ -18,13 +18,12 @@ if [ -z "$NEXT_NAME" ]; then
 fi
 
 version_go() {
-VERSION_GO=<<EOGO
+cat <<EOGO
 // WARNING: this file is generated do not modify it manually.
 package main
 
 const Version = "$1"
 EOGO
-echo "$VERSION_GO"
 }
 
 build() {
@@ -35,6 +34,7 @@ build() {
     GOOS=$os GOARCH=$arch go build && tar czf "$tarfile" jqsh && rm jqsh
     [ $? -eq 0 ] || exit 1
 }
+
 
 if [ -n "`git status --porcelain`" ]; then
     echo 1>&2 'repository is not clean'
