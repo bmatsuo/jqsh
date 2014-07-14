@@ -60,4 +60,5 @@ md5 jqsh"${TAG_NAME}".*.tar.gz > jqsh"${TAG_NAME}".md5
 echo "all distributions built successfully"
 
 version_go "$NEXT_NAME" > version.go
+git add version.go
 git commit -m "bump version to $NEXT_NAME"
