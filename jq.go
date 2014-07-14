@@ -121,40 +121,19 @@ func ParseJQVersion(vstr string) (s string, major, minor int, suffix string, err
 }
 
 func scanJQVersion(lex *lexer.Lexer) lexer.StateFn {
-	// prefix "jq-"
-	if !lex.Accept("j") {
-		return lex.Errorf("not a jq version")
-	}
-	if !lex.Accept("q") {
-		return lex.Errorf("not a jq version")
+	// newer jq have prefix "jq-" while older ones have prefix "jq version ".
+	if !lex.AcceptString("jq") {
+		return lex.Errorf("not a jq version (expected \"jq\")")
 	}
 	if !lex.Accept("-") {
 		if !lex.Accept(" ") {
-			return lex.Errorf("not a jq version")
+			return lex.Errorf("not a jq version (expected [- ])")
 		}
-		if !lex.Accept("v") {
-			return lex.Errorf("not a jq version")
-		}
-		if !lex.Accept("e") {
-			return lex.Errorf("not a jq version")
-		}
-		if !lex.Accept("r") {
-			return lex.Errorf("not a jq version")
-		}
-		if !lex.Accept("s") {
-			return lex.Errorf("not a jq version")
-		}
-		if !lex.Accept("i") {
-			return lex.Errorf("not a jq version")
-		}
-		if !lex.Accept("o") {
-			return lex.Errorf("not a jq version")
-		}
-		if !lex.Accept("n") {
-			return lex.Errorf("not a jq version")
+		if !lex.AcceptString("version") {
+			return lex.Errorf("not a jq version (expected \"version\")")
 		}
 		if !lex.Accept(" ") {
-			return lex.Errorf("not a jq version")
+			return lex.Errorf("not a jq version (expected [ ])")
 		}
 	}
 	lex.Ignore()
