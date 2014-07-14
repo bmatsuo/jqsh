@@ -111,8 +111,9 @@ func (lib *Lib) helpList(jq *JQShell) error {
 		sort.Strings(names)
 		for _, name := range names {
 			synop := doc.Synopsis(strings.Join(lib.topics[name], "\n"))
-			fmt.Fprintln(&buf, "  "+name+" -- "+synop)
+			fmt.Fprintln(tw, "  "+name+"\t"+synop)
 		}
+		tw.Flush()
 	}
 
 	fmt.Fprintln(&buf, "for information on a topic run `help <topic>`")
