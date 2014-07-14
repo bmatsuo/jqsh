@@ -189,6 +189,10 @@ func NewJQShell(bin string, sh ShellReader) *JQShell {
 	jq.lib.Register("write", JQShellCommandFunc(cmdWrite))
 	jq.lib.Register("raw", JQShellCommandFunc(cmdRaw))
 	jq.lib.Register("quit", JQShellCommandFunc(cmdQuit))
+	if shdoc, ok := sh.(Documented); ok {
+		jq.lib.RegisterHelp("syntax", shdoc.Documentation())
+	}
+
 	jq.wg.Add(1)
 	go jq.loop()
 	return jq
@@ -342,4 +346,12 @@ func (jq *JQShell) execute(cmd []string, err error) error {
 		return jq.lib.Execute(jq, name, args)
 	}
 	return nil
+}
+
+// Documentation is a type that allows plugable components to document
+// themselves in help topics.
+type Documented interface {
+	// Documentation returns a string of documentation the documentation will
+	// be formatted according to application specific rules.
+	Documentation() string
 }

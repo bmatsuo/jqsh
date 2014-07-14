@@ -78,20 +78,20 @@ func (lib *Lib) helpName(jq *JQShell, name string) error {
 }
 
 func (lib *Lib) helpList() error {
-	fmt.Println("available commands:")
+	fmt.Println("commands:")
 	for name := range lib.cmds {
 		fmt.Println("\t" + name)
 	}
 	fmt.Println("\thelp")
-	fmt.Println("pass -h to a command for usage details")
 
 	if len(lib.topics) > 0 {
-		fmt.Println("additional help topics:")
+		fmt.Println("other topics:")
 		for name := range lib.topics {
 			fmt.Println("\t" + name)
 		}
-		fmt.Println("for information on a topic run `help <topic>`")
 	}
+
+	fmt.Println("for information on a topic run `help <topic>`")
 
 	return nil
 }

@@ -75,6 +75,22 @@ type ShellReader interface {
 	ReadCommand() (cmd []string, eof bool, err error)
 }
 
+const simpleShellReaderDocs = `
+The shell syntax is primitive but it suffices.  Lines prefixed with a colon ':'
+are commands, other lines are shorthand for specific commands.  Following is a
+list of all shell syntax in jqsh.
+
+	:<cmd> <arg1> <arg2> ...    execute cmd with the given arguments
+	:<cmd> ... +<argN>          execute cmd with an argument containing spaces (argN)
+	.                           shorthand for ":write"
+	..                          shorthand for ":pop"
+	?<filter>                   shorthand for ":peek +<filter>"
+	<filter>                    shorthand for ":push +<filter>"
+
+Note that "." is a valid jq filter but pushing it on the filter stack lacks
+semantic value.  So "." alone on a line is used as a shorthand for ":write".
+`
+
 type SimpleShellReader struct {
 	r      io.Reader
 	br     *bufio.Reader
@@ -82,12 +98,19 @@ type SimpleShellReader struct {
 	prompt string
 }
 
+var _ ShellReader = (*SimpleShellReader)(nil)
+var _ Documented = (*SimpleShellReader)(nil)
+
 func NewShellReader(r io.Reader, prompt string) *SimpleShellReader {
 	if r == nil {
 		r = os.Stdin
 	}
 	br := bufio.NewReader(r)
 	return &SimpleShellReader{r, br, os.Stdout, prompt}
+}
+
+func (s *SimpleShellReader) Documentation() string {
+	return simpleShellReaderDocs
 }
 
 func (s *SimpleShellReader) SetOutput(w io.Writer) {
@@ -168,6 +191,10 @@ type InitShellReader struct {
 
 func NewInitShellReader(r io.Reader, prompt string, initcmds [][]string) *InitShellReader {
 	return &InitShellReader{0, initcmds, NewShellReader(r, prompt)}
+}
+
+func (sh *InitShellReader) Documentation() string {
+	return simpleShellReaderDocs
 }
 
 func (sh *InitShellReader) ReadCommand() ([]string, bool, error) {
