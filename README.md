@@ -70,7 +70,7 @@ go in a bunch of directions. I just want to make sure it is guided properly and
 don't want to make big decisions hastily.
 
 If you want to work on something, comment on the issue so that people don't end
-up worknig on the same thing by accident.
+up working on the same thing by accident.
 
 ##License
 
