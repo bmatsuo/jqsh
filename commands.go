@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -79,14 +80,26 @@ func (lib *Lib) helpName(jq *JQShell, name string) error {
 
 func (lib *Lib) helpList() error {
 	fmt.Println("commands:")
+	var names []string
 	for name := range lib.cmds {
+		names = append(names, name)
+	}
+	names = append(names, "help") // TODO make help a normal command, everything easier that way
+	sort.Strings(names)
+	for _, name := range names {
 		fmt.Println("\t" + name)
 	}
-	fmt.Println("\thelp")
+	if len(names) > 0 {
+		names = names[:0]
+	}
 
 	if len(lib.topics) > 0 {
 		fmt.Println("other topics:")
 		for name := range lib.topics {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+		for _, name := range names {
 			fmt.Println("\t" + name)
 		}
 	}
