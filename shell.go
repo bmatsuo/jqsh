@@ -12,6 +12,9 @@ import (
 	"os/exec"
 	"strings"
 	"unicode"
+	"unicode/utf8"
+
+	"github.com/bmatsuo/go-lexer"
 )
 
 // Page returns an io.Writer whose input will be written to the pager program.
@@ -208,4 +211,134 @@ func (sh *InitShellReader) ReadCommand() ([]string, bool, error) {
 		return cmd, false, nil
 	}
 	return sh.r.ReadCommand()
+}
+
+type shellScanner struct {
+	lex    *lexer.Lexer
+	q, esc rune
+}
+
+const (
+	itemColon lexer.ItemType = iota
+	itemDot
+	itemDotDot
+	itemQMark
+	itemString
+)
+
+func (s *shellScanner) lexStart(lex *lexer.Lexer) lexer.StateFn {
+	if lex.Accept(":") {
+		lex.Emit(itemColon)
+		return s.lexCommand
+	}
+	if lex.Accept("?") {
+		lex.Emit(itemQMark)
+		return s.lexSlurp
+	}
+	if lex.AcceptString("..") {
+		r, n := lex.Advance()
+		if n != 0 {
+			return lex.Errorf(`expected end-of-input following ".."; got '%c'`, r)
+		}
+		lex.Emit(itemDotDot)
+		lex.Emit(lexer.ItemEOF)
+		return nil
+	}
+	if lex.Accept(".") {
+		r, n := lex.Advance()
+		if n != 0 {
+			return lex.Errorf(`expected end-of-input following "."; got '%c'`, r)
+		}
+		lex.Emit(itemDot)
+		lex.Emit(lexer.ItemEOF)
+		return nil
+	}
+	return s.lexSlurp
+}
+
+func (s *shellScanner) lexCommand(lex *lexer.Lexer) lexer.StateFn {
+	lex.AcceptRun(" \t")
+	lex.Ignore()
+	if lex.Accept("+") {
+		return s.lexSlurp
+	}
+	return s.lexStringCont(s.lexCommand)
+}
+
+func (s *shellScanner) lexStringCont(cont lexer.StateFn) lexer.StateFn {
+	return func(lex *lexer.Lexer) lexer.StateFn {
+		if lex.Accept("'") {
+			lex.Backup()
+			return s.lexStringContQuote(cont, '\'', '\\')
+		}
+		if lex.Accept("\"") {
+			lex.Backup()
+			return s.lexStringContQuote(cont, '"', '\\')
+		}
+		for {
+			c, n := lex.Advance()
+			if n == 0 {
+				if lex.Accept(" \t") {
+					lex.Backup()
+				} else {
+					_, n := lex.Advance()
+					if n != 0 {
+						return lex.Errorf("quote not followed by space or end of input")
+					}
+				}
+				lex.Emit(itemString)
+				return cont
+			}
+			if c == utf8.RuneError && n == 1 {
+				return lex.Errorf("invalid utf-8 rune")
+			}
+			if unicode.IsSpace(c) {
+				lex.Backup()
+				lex.Emit(itemString)
+				return cont
+			}
+			continue
+		}
+	}
+}
+
+func (s *shellScanner) lexStringContQuote(cont lexer.StateFn, q, esc rune) lexer.StateFn {
+	qstr := string([]rune{q})
+	escstr := string([]rune{esc})
+	return func(lex *lexer.Lexer) lexer.StateFn {
+		if !lex.Accept(qstr) {
+			return lex.Errorf("expected %0x", q)
+		}
+		for {
+			if lex.Accept(qstr) {
+				lex.Emit(itemString)
+				return cont
+			}
+			if lex.Accept(escstr) {
+				c, n := lex.Advance()
+				if n == 0 {
+					return lex.Errorf("unexpected end-of-input following escape")
+				}
+				if c == utf8.RuneError && n == 1 {
+					return lex.Errorf("invalid utf-8 rune")
+				}
+				continue
+			}
+		}
+	}
+}
+
+// slurp emits an ItemString containing the text up to the end of the line.
+func (s *shellScanner) lexSlurp(lex *lexer.Lexer) lexer.StateFn {
+	for {
+		c, n := lex.Advance()
+		if n == 0 {
+			lex.Emit(itemString)
+			return nil
+		}
+		if c == utf8.RuneError && n == 1 {
+			return lex.Errorf("invalid utf-8 rune")
+		}
+	}
+	return nil
 }
