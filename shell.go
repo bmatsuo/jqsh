@@ -213,9 +213,14 @@ func (sh *InitShellReader) ReadCommand() ([]string, bool, error) {
 	return sh.r.ReadCommand()
 }
 
-type shellScanner struct {
-	lex    *lexer.Lexer
-	q, esc rune
+type shellParser struct {
+	lex *lexer.Lexer
+}
+
+func newShellParser(input string) *shellParser {
+	s := new(shellParser)
+	s.lex = lexer.New(s.lexStart, input)
+	return s
 }
 
 const (
@@ -226,7 +231,7 @@ const (
 	itemString
 )
 
-func (s *shellScanner) lexStart(lex *lexer.Lexer) lexer.StateFn {
+func (s *shellParser) lexStart(lex *lexer.Lexer) lexer.StateFn {
 	if lex.Accept(":") {
 		lex.Emit(itemColon)
 		return s.lexCommand
@@ -256,8 +261,8 @@ func (s *shellScanner) lexStart(lex *lexer.Lexer) lexer.StateFn {
 	return s.lexSlurp
 }
 
-func (s *shellScanner) lexCommand(lex *lexer.Lexer) lexer.StateFn {
-	lex.AcceptRun(" \t")
+func (s *shellParser) lexCommand(lex *lexer.Lexer) lexer.StateFn {
+	lex.AcceptRunFunc(unicode.IsSpace)
 	lex.Ignore()
 	if lex.Accept("+") {
 		return s.lexSlurp
@@ -265,7 +270,7 @@ func (s *shellScanner) lexCommand(lex *lexer.Lexer) lexer.StateFn {
 	return s.lexStringCont(s.lexCommand)
 }
 
-func (s *shellScanner) lexStringCont(cont lexer.StateFn) lexer.StateFn {
+func (s *shellParser) lexStringCont(cont lexer.StateFn) lexer.StateFn {
 	return func(lex *lexer.Lexer) lexer.StateFn {
 		if lex.Accept("'") {
 			lex.Backup()
@@ -277,19 +282,10 @@ func (s *shellScanner) lexStringCont(cont lexer.StateFn) lexer.StateFn {
 		}
 		for {
 			c, n := lex.Advance()
-			if n == 0 {
-				if lex.Accept(" \t") {
-					lex.Backup()
-				} else {
-					_, n := lex.Advance()
-					if n != 0 {
-						return lex.Errorf("quote not followed by space or end of input")
-					}
-				}
+			if lexer.IsEOF(c, n) {
 				lex.Emit(itemString)
-				return cont
 			}
-			if c == utf8.RuneError && n == 1 {
+			if lexer.IsInvalid(c, n) {
 				return lex.Errorf("invalid utf-8 rune")
 			}
 			if unicode.IsSpace(c) {
@@ -297,12 +293,11 @@ func (s *shellScanner) lexStringCont(cont lexer.StateFn) lexer.StateFn {
 				lex.Emit(itemString)
 				return cont
 			}
-			continue
 		}
 	}
 }
 
-func (s *shellScanner) lexStringContQuote(cont lexer.StateFn, q, esc rune) lexer.StateFn {
+func (s *shellParser) lexStringContQuote(cont lexer.StateFn, q, esc rune) lexer.StateFn {
 	qstr := string([]rune{q})
 	escstr := string([]rune{esc})
 	return func(lex *lexer.Lexer) lexer.StateFn {
@@ -312,14 +307,24 @@ func (s *shellScanner) lexStringContQuote(cont lexer.StateFn, q, esc rune) lexer
 		for {
 			if lex.Accept(qstr) {
 				lex.Emit(itemString)
+				c, n := lex.Peek()
+				if lexer.IsEOF(c, n) {
+					return cont
+				}
+				if lexer.IsInvalid(c, n) {
+					return lex.Errorf("invalid utf-8 rune")
+				}
+				if !unicode.IsSpace(c) {
+					return lex.Errorf("string not followed by space or end-of-input %q", c)
+				}
 				return cont
 			}
 			if lex.Accept(escstr) {
 				c, n := lex.Advance()
-				if n == 0 {
+				if lexer.IsEOF(c, n) {
 					return lex.Errorf("unexpected end-of-input following escape")
 				}
-				if c == utf8.RuneError && n == 1 {
+				if lexer.IsInvalid(c, n) {
 					return lex.Errorf("invalid utf-8 rune")
 				}
 				continue
@@ -329,7 +334,7 @@ func (s *shellScanner) lexStringContQuote(cont lexer.StateFn, q, esc rune) lexer
 }
 
 // slurp emits an ItemString containing the text up to the end of the line.
-func (s *shellScanner) lexSlurp(lex *lexer.Lexer) lexer.StateFn {
+func (s *shellParser) lexSlurp(lex *lexer.Lexer) lexer.StateFn {
 	for {
 		c, n := lex.Advance()
 		if n == 0 {
