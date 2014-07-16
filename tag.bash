@@ -20,6 +20,7 @@ fi
 version_go() {
 cat <<EOGO
 // WARNING: this file is generated do not modify it manually.
+
 package main
 
 const Version = "$1"
